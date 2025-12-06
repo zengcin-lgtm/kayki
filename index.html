@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V11)</title>
+    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V14)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -12,36 +12,48 @@
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+
+        /* --- 🖨️ 列印專用樣式 --- */
         @media print {
-            body * { visibility: hidden; }
-            #printable-area, #printable-area * { visibility: visible; }
-            #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; background: white; }
-            -webkit-print-color-adjust: exact; print-color-adjust: exact;
-            .no-print { display: none !important; }
+            @page { size: A4 portrait; margin: 15mm; }
+            body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body * { visibility: hidden; height: 0; overflow: hidden; }
+            .no-print, nav, #login-overlay, #toast, #loading { display: none !important; }
+            
+            #printable-area, #printable-area * { visibility: visible; height: auto; overflow: visible; }
+            #printable-area {
+                position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; background: white !important; color: black !important;
+            }
+            table { border-collapse: collapse !important; width: 100% !important; margin-bottom: 20px !important; }
+            th, td { border: 1px solid #000 !important; padding: 6px !important; font-size: 11pt !important; }
+            th { background-color: #f0f0f0 !important; font-weight: bold !important; text-align: center; }
+            .sign-box { height: 2.5cm !important; }
+            .attachment-area { border: 2px dashed #666 !important; height: 8cm !important; margin: 15px 0 !important; }
         }
-        .voucher-table { width: 100%; border-collapse: collapse; border: 2px solid black; }
-        .voucher-table th, .voucher-table td { border: 1px solid black; padding: 8px; }
-        .voucher-table th { background-color: #f3f4f6; text-align: center; font-weight: bold; width: 15%; }
+
+        /* 螢幕預覽樣式 */
+        .preview-table { width: 100%; border-collapse: collapse; border: 1px solid #333; margin-bottom: 20px; }
+        .preview-table th, .preview-table td { border: 1px solid #333; padding: 8px; }
+        .preview-table th { background-color: #f3f4f6; text-align: center; font-weight: bold; }
+        .amount-col { text-align: right; font-family: monospace; }
         .sign-box { height: 80px; vertical-align: bottom; text-align: center; width: 20%; }
+        .attachment-area { border: 2px dashed #94a3b8; height: 200px; display: flex; align-items: center; justify-content: center; background-color: #f8fafc; color: #64748b; font-weight: bold; margin: 15px 0; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 pb-24 md:pb-10">
 
-    <!-- Login Overlay -->
+    <!-- Login -->
     <div id="login-overlay" class="fixed inset-0 bg-slate-800 z-[150] flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 fade-in relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-500 to-emerald-500"></div>
             <div class="text-center mb-8">
-                <div class="bg-teal-50 p-4 rounded-full inline-block mb-4 ring-4 ring-teal-100">
-                    <i data-lucide="shield-check" class="w-10 h-10 text-teal-600"></i>
-                </div>
-                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">'onanip 會計系統</h1>
-                <p class="text-sm text-slate-500 mt-2">權限管理 V11</p>
+                <div class="bg-teal-50 p-4 rounded-full inline-block mb-4 ring-4 ring-teal-100"><i data-lucide="shield-check" class="w-10 h-10 text-teal-600"></i></div>
+                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V14</h1>
             </div>
             <form id="login-form" class="space-y-5">
-                <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">帳號 ID</label><input type="text" id="login-id" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none" placeholder="user"></div>
-                <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">密碼 Password</label><input type="password" id="login-pwd" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none" placeholder="••••"></div>
-                <button type="submit" id="btn-login" class="w-full bg-slate-800 text-white font-bold py-3 rounded-xl hover:bg-slate-700 transition-all active:scale-95 flex justify-center items-center shadow-lg"><i data-lucide="log-in" class="w-5 h-5 mr-2"></i> 登入系統</button>
+                <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">帳號</label><input type="text" id="login-id" class="w-full p-3 border border-slate-300 rounded-lg outline-none" placeholder="user"></div>
+                <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">密碼</label><input type="password" id="login-pwd" class="w-full p-3 border border-slate-300 rounded-lg outline-none" placeholder="••••"></div>
+                <button type="submit" id="btn-login" class="w-full bg-slate-800 text-white font-bold py-3 rounded-xl hover:bg-slate-700 transition-all flex justify-center items-center shadow-lg">登入系統</button>
             </form>
             <div id="login-msg" class="mt-4 text-center text-rose-500 text-sm font-bold hidden bg-rose-50 p-2 rounded"></div>
             <div class="mt-6 pt-6 border-t text-center"><button onclick="showSettingsOnly()" class="text-slate-400 text-xs hover:text-teal-600">設定連線</button></div>
@@ -60,14 +72,14 @@
                 </div>
             </div>
             <div class="hidden md:flex space-x-2 bg-slate-800/50 p-1 rounded-lg">
-                <button onclick="switchTab('dashboard')" class="desktop-nav-btn px-4 py-2 rounded-md text-sm font-bold text-teal-300 bg-white/10 transition-colors">總覽</button>
-                <button onclick="switchTab('entry')" class="desktop-nav-btn px-4 py-2 rounded-md text-sm font-bold text-slate-300 hover:bg-white/10 transition-colors">記帳</button>
-                <button onclick="switchTab('list')" class="desktop-nav-btn px-4 py-2 rounded-md text-sm font-bold text-slate-300 hover:bg-white/10 transition-colors">明細</button>
-                <button onclick="switchTab('projects')" class="desktop-nav-btn px-4 py-2 rounded-md text-sm font-bold text-slate-300 hover:bg-white/10 transition-colors">計畫</button>
+                <button onclick="switchTab('dashboard')" class="desktop-nav-btn px-4 py-2 rounded-md text-sm font-bold text-teal-300 bg-white/10">總覽</button>
+                <button onclick="switchTab('entry')" class="desktop-nav-btn px-4 py-2 rounded-md text-sm font-bold text-slate-300 hover:bg-white/10">記帳</button>
+                <button onclick="switchTab('list')" class="desktop-nav-btn px-4 py-2 rounded-md text-sm font-bold text-slate-300 hover:bg-white/10">明細</button>
+                <button onclick="switchTab('projects')" class="desktop-nav-btn px-4 py-2 rounded-md text-sm font-bold text-slate-300 hover:bg-white/10">計畫</button>
             </div>
             <div class="flex items-center space-x-2">
-                <button onclick="switchTab('settings')" class="p-2 hover:bg-white/10 rounded-full transition-colors border border-white/20"><i data-lucide="settings" class="w-5 h-5"></i></button>
-                <button onclick="logout()" class="p-2 hover:bg-rose-600 rounded-full transition-colors border border-white/20"><i data-lucide="log-out" class="w-5 h-5"></i></button>
+                <button onclick="switchTab('settings')" class="p-2 hover:bg-white/10 rounded-full border border-white/20"><i data-lucide="settings" class="w-5 h-5"></i></button>
+                <button onclick="logout()" class="p-2 hover:bg-rose-600 rounded-full border border-white/20"><i data-lucide="log-out" class="w-5 h-5"></i></button>
             </div>
         </div>
     </nav>
@@ -77,10 +89,8 @@
         <div id="view-settings" class="view-section hidden fade-in">
             <div class="bg-white rounded-2xl shadow-md p-6 border border-slate-100 max-w-xl mx-auto mt-6">
                 <h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center"><i data-lucide="link" class="w-6 h-6 mr-2 text-teal-600"></i> 連線設定</h2>
-                <div class="space-y-4">
-                    <input type="text" id="api-url-input" placeholder="GAS URL" class="w-full p-3 border border-slate-300 rounded-lg outline-none text-sm text-slate-600 font-mono">
-                    <button onclick="saveAndConnect()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg flex justify-center items-center shadow-md"><i data-lucide="plug" class="w-4 h-4 mr-2"></i> 儲存並連線</button>
-                </div>
+                <input type="text" id="api-url-input" placeholder="GAS URL" class="w-full p-3 border border-slate-300 rounded-lg mb-4">
+                <button onclick="saveAndConnect()" class="w-full bg-teal-600 text-white font-bold py-3 rounded-lg">儲存並連線</button>
             </div>
         </div>
 
@@ -90,44 +100,27 @@
                 <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-emerald-500"><p class="text-xs text-slate-500 mb-1">本期總收入</p><p id="total-income" class="text-2xl font-bold text-slate-800">$0</p></div>
                 <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-rose-500"><p class="text-xs text-slate-500 mb-1">本期總支出</p><p id="total-expense" class="text-2xl font-bold text-slate-800">$0</p></div>
             </div>
-            <div class="bg-white rounded-xl shadow-sm p-5 border border-slate-100 min-h-[200px]">
-                <h3 class="font-bold text-slate-700 mb-4 flex items-center"><i data-lucide="pie-chart" class="w-5 h-5 mr-2 text-teal-600"></i> 計畫預算監控</h3>
-                <div id="project-stats" class="space-y-4"></div>
-            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border border-slate-100"><div id="project-stats" class="space-y-4"></div></div>
         </div>
 
-        <!-- Entry Form (新增/修改) -->
+        <!-- Entry Form -->
         <div id="view-entry" class="view-section hidden fade-in">
             <div class="bg-white rounded-2xl shadow-md p-6 border border-slate-100 max-w-2xl mx-auto relative">
-                <!-- 編輯模式標籤 -->
-                <div id="edit-mode-indicator" class="hidden absolute top-0 right-0 bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg border-b border-l border-amber-200">
-                    <i data-lucide="edit-3" class="w-3 h-3 inline mr-1"></i>修改模式
-                </div>
-
+                <div id="edit-mode-indicator" class="hidden absolute top-0 right-0 bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg border-b border-l border-amber-200">修改模式</div>
                 <h2 class="text-lg font-bold text-slate-700 mb-6 flex items-center"><i data-lucide="file-plus" class="w-6 h-6 mr-2 text-teal-600"></i> <span id="form-title">新增紀錄</span></h2>
                 <form id="entry-form" class="space-y-5">
                     <div class="flex bg-slate-100 p-1 rounded-lg">
                         <button type="button" onclick="setType('expense')" id="btn-expense" class="flex-1 py-3 rounded-md text-sm font-bold bg-white text-rose-600 shadow-sm transition-all">支出</button>
                         <button type="button" onclick="setType('income')" id="btn-income" class="flex-1 py-3 rounded-md text-sm font-bold text-slate-500 transition-all">收入</button>
                     </div>
-                    <input type="hidden" id="inp-type" value="expense">
-                    <input type="hidden" id="inp-id" value=""> <!-- 用於修改時儲存原始ID -->
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <input type="date" id="inp-date" required class="w-full p-3 border rounded-lg">
-                        <input type="number" id="inp-amount" required placeholder="金額" class="w-full p-3 border rounded-lg font-mono">
-                    </div>
-                    <select id="inp-project" required class="w-full p-3 border rounded-lg bg-white"><option>載入中...</option></select>
-                    <select id="inp-category" required class="w-full p-3 border rounded-lg bg-white"><option>載入中...</option></select>
+                    <input type="hidden" id="inp-type" value="expense"><input type="hidden" id="inp-id" value="">
+                    <div class="grid grid-cols-2 gap-4"><input type="date" id="inp-date" required class="w-full p-3 border rounded-lg"><input type="number" id="inp-amount" required placeholder="金額" class="w-full p-3 border rounded-lg font-mono"></div>
+                    <select id="inp-project" required class="w-full p-3 border rounded-lg bg-white"></select><select id="inp-category" required class="w-full p-3 border rounded-lg bg-white"></select>
                     <input type="text" id="inp-summary" required placeholder="摘要" class="w-full p-3 border rounded-lg">
-                    <div class="grid grid-cols-2 gap-4">
-                        <input type="text" id="inp-payee" placeholder="對象" class="w-full p-3 border rounded-lg">
-                        <input type="text" id="inp-note" placeholder="備註" class="w-full p-3 border rounded-lg">
-                    </div>
-                    
+                    <div class="grid grid-cols-2 gap-4"><input type="text" id="inp-payee" placeholder="對象" class="w-full p-3 border rounded-lg"><input type="text" id="inp-note" placeholder="備註" class="w-full p-3 border rounded-lg"></div>
                     <div class="flex space-x-3">
-                        <button type="button" id="btn-cancel-edit" onclick="cancelEdit()" class="hidden w-1/3 bg-slate-200 text-slate-600 font-bold py-4 rounded-xl hover:bg-slate-300">取消</button>
-                        <button type="submit" id="btn-submit" class="w-full bg-rose-600 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center"><i data-lucide="save" class="w-5 h-5 mr-2"></i> 儲存</button>
+                        <button type="button" id="btn-cancel-edit" onclick="cancelEdit()" class="hidden w-1/3 bg-slate-200 text-slate-600 font-bold py-4 rounded-xl">取消</button>
+                        <button type="submit" id="btn-submit" class="w-full bg-rose-600 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center"><i data-lucide="save" class="w-5 h-5 mr-2"></i> 儲存並列印</button>
                     </div>
                 </form>
             </div>
@@ -137,13 +130,9 @@
         <div id="view-list" class="view-section hidden fade-in">
             <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm mb-4">
                 <h3 class="font-bold text-slate-700">收支明細</h3>
-                <div class="flex space-x-2">
-                    <div class="text-[10px] flex items-center space-x-2 bg-slate-50 px-2 rounded-lg text-slate-400">
-                        <span class="flex items-center"><i data-lucide="check-circle" class="w-3 h-3 text-emerald-500 mr-1"></i>已匯款</span>
-                        <span class="flex items-center"><i data-lucide="circle" class="w-3 h-3 text-slate-300 mr-1"></i>未匯款</span>
-                    </div>
-                    <button onclick="exportCSV()" class="bg-teal-50 text-teal-700 border border-teal-200 px-3 py-2 rounded-lg flex items-center font-bold text-sm hover:bg-teal-100"><i data-lucide="download" class="w-4 h-4 mr-2"></i> 匯出</button>
-                </div>
+                <button onclick="openReportModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center font-bold text-sm hover:bg-indigo-700 shadow-md">
+                    <i data-lucide="printer" class="w-4 h-4 mr-2"></i> 產出報表 (PDF)
+                </button>
             </div>
             <div class="bg-white rounded-xl shadow-sm overflow-hidden min-h-[300px]">
                 <table class="w-full text-sm text-left">
@@ -162,33 +151,42 @@
         </div>
     </main>
 
-    <!-- Voucher Modal -->
-    <div id="voucher-modal" class="fixed inset-0 bg-black/50 z-[100] hidden flex items-center justify-center p-4 print:p-0 print:bg-white print:block">
-        <div id="printable-area" class="bg-white w-full max-w-4xl p-8 rounded-lg shadow-2xl overflow-y-auto max-h-[90vh] print:max-h-none print:shadow-none print:w-full">
-            <div class="text-center mb-6">
-                <h1 class="text-2xl font-bold tracking-widest mb-2 border-b-2 border-black inline-block pb-1">花蓮縣 'onanip 文教協會</h1>
-                <h2 class="text-xl font-bold mt-2">支用單據黏貼憑證用紙</h2>
+    <!-- Report Modal -->
+    <div id="report-modal" class="fixed inset-0 bg-black/50 z-[200] hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 fade-in">
+            <h3 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">🖨️ 產出財務報表</h3>
+            <div class="space-y-4">
+                <div><label class="block text-sm font-bold text-slate-600 mb-1">篩選計畫</label><select id="rpt-project" class="w-full p-2 border rounded bg-white"><option value="ALL">全部計畫</option></select></div>
+                <div><label class="block text-sm font-bold text-slate-600 mb-1">月份</label><input type="month" id="rpt-month" class="w-full p-2 border rounded"></div>
+                <div><label class="block text-sm font-bold text-slate-600 mb-2">報表類型</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center p-2 border rounded hover:bg-slate-50"><input type="radio" name="rpt-type" value="journal" checked class="mr-2">日記帳</label>
+                        <label class="flex items-center p-2 border rounded hover:bg-slate-50"><input type="radio" name="rpt-type" value="ledger" class="mr-2">分類帳</label>
+                        <label class="flex items-center p-2 border rounded hover:bg-slate-50"><input type="radio" name="rpt-type" value="monthly" class="mr-2">收支月報表</label>
+                    </div>
+                </div>
             </div>
-            <div class="flex justify-between mb-2 font-mono text-sm"><div><span class="font-bold">計畫：</span><span id="v-proj-id"></span></div><div><span class="font-bold">編號：</span><span id="v-id"></span></div></div>
-            <table class="voucher-table mb-4 text-sm">
-                <tr><th>計畫名稱</th><td colspan="3" id="v-proj-name"></td><th>申請日期</th><td id="v-date"></td></tr>
-                <tr><th>科目</th><td colspan="3" id="v-category"></td><th>金額</th><td id="v-amount" class="font-bold font-mono text-lg"></td></tr>
-                <tr><th>摘要</th><td colspan="5" id="v-summary" class="h-16 align-top"></td></tr>
-                <tr><th>備註</th><td colspan="5" id="v-note"></td></tr>
-            </table>
-            <div class="border-2 border-dashed border-slate-400 h-64 flex items-center justify-center text-slate-400 font-bold text-xl mb-4 bg-slate-50 print:bg-white">憑 證 黏 貼 處</div>
-            <div class="text-xs mb-1">合計新台幣：<span id="v-amount-chinese" class="text-base ml-2"></span></div>
-            <table class="voucher-table text-center">
-                <tr><th class="w-1/5">理事長</th><th class="w-1/5">總幹事</th><th class="w-1/5">會計</th><th class="w-1/5">驗收</th><th class="w-1/5">經辦人</th></tr>
-                <tr><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td></tr>
-            </table>
-            <div class="mt-8 flex justify-end space-x-4 no-print"><button onclick="closeVoucher()" class="px-6 py-2 border rounded-lg font-bold">關閉</button><button onclick="window.print()" class="px-6 py-2 bg-teal-600 text-white rounded-lg font-bold">列印</button></div>
+            <div class="mt-6 flex space-x-3">
+                <button onclick="document.getElementById('report-modal').classList.add('hidden')" class="w-1/2 bg-slate-200 text-slate-600 font-bold py-3 rounded-xl">取消</button>
+                <button onclick="generateReport()" class="w-1/2 bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg">列印 / PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Preview Modal (共用) -->
+    <div id="print-modal" class="fixed inset-0 bg-black/50 z-[250] hidden flex items-center justify-center p-4 print:p-0 print:bg-white print:block">
+        <div id="printable-area" class="bg-white w-full max-w-5xl p-8 rounded-lg shadow-2xl overflow-y-auto max-h-[90vh] print:max-h-none print:shadow-none print:w-full">
+            <div id="print-content"></div>
+            <div class="mt-8 flex justify-end space-x-4 no-print">
+                <button onclick="document.getElementById('print-modal').classList.add('hidden')" class="px-6 py-2 border rounded-lg font-bold">關閉</button>
+                <button onclick="window.print()" class="px-6 py-2 bg-teal-600 text-white rounded-lg font-bold flex items-center"><i data-lucide="printer" class="w-5 h-5 mr-2"></i> 列印 / 存為PDF</button>
+            </div>
         </div>
     </div>
 
     <!-- Toast & Loading & Mobile Nav -->
-    <div id="toast" class="fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[200] text-white hidden transition-all duration-300 transform translate-y-[-20px] opacity-0"><span id="toast-msg"></span></div>
-    <div id="loading" class="fixed inset-0 bg-white/90 z-[200] hidden flex flex-col items-center justify-center backdrop-blur-sm"><i data-lucide="loader-2" class="w-12 h-12 animate-spin text-teal-600 mb-4"></i><p class="text-slate-600 font-bold text-lg">處理中...</p></div>
+    <div id="toast" class="fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[300] text-white hidden transition-all duration-300 transform translate-y-[-20px] opacity-0"><span id="toast-msg"></span></div>
+    <div id="loading" class="fixed inset-0 bg-white/90 z-[300] hidden flex flex-col items-center justify-center backdrop-blur-sm"><i data-lucide="loader-2" class="w-12 h-12 animate-spin text-teal-600 mb-4"></i><p class="text-slate-600 font-bold text-lg">處理中...</p></div>
     <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2 flex justify-around z-50 pb-safe no-print">
         <button onclick="switchTab('dashboard')" class="nav-btn text-teal-600 flex flex-col items-center p-2 w-full"><i data-lucide="layout-dashboard" class="w-6 h-6"></i><span class="text-[10px]">總覽</span></button>
         <button onclick="switchTab('entry')" class="nav-btn text-slate-400 flex flex-col items-center p-2 w-full"><i data-lucide="plus-circle" class="w-6 h-6"></i><span class="text-[10px]">記帳</span></button>
@@ -203,11 +201,10 @@
             lucide.createIcons();
             document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
             const savedUrl = localStorage.getItem('onanip_url');
-            if (savedUrl) { state.apiUrl = savedUrl; document.getElementById('api-url-input').value = savedUrl; fetchData(); }
+            if (savedUrl) { state.apiUrl = savedUrl; document.getElementById('api-url-input').value = savedUrl; fetchData(false); }
             else { document.getElementById('login-overlay').classList.add('hidden'); switchTab('settings'); }
         };
 
-        // Fetch
         async function fetchData() {
             showLoading(true);
             try {
@@ -215,11 +212,10 @@
                 if (data.status === 'error') throw new Error(data.message);
                 state.projects = data.projects || []; state.transactions = data.transactions || [];
                 state.categories = data.categories || []; state.users = data.users || [];
-                showToast('已連線'); document.getElementById('login-overlay').classList.remove('hidden');
+                document.getElementById('login-overlay').classList.remove('hidden'); showToast('已連線');
             } catch (e) { showToast('連線失敗', 'error'); document.getElementById('login-overlay').classList.add('hidden'); switchTab('settings'); } finally { showLoading(false); }
         }
 
-        // Login
         document.getElementById('login-form').onsubmit = (e) => {
             e.preventDefault();
             const id = document.getElementById('login-id').value.trim(); const pwd = document.getElementById('login-pwd').value.trim();
@@ -227,192 +223,104 @@
             if (user) {
                 state.currentUser = user; document.getElementById('login-overlay').classList.add('hidden');
                 updateUI(); switchTab('dashboard'); showToast(`歡迎 ${user.name}`);
-                document.getElementById('user-display').innerText = `${user.name} (${user.role === 'admin' ? '管理員' : user.role === 'treasurer' ? '出納' : '人員'})`;
+                document.getElementById('user-display').innerText = `${user.name} (${user.role})`;
+                document.getElementById('navbar').classList.replace('bg-slate-700', 'bg-teal-700');
             } else { document.getElementById('login-msg').innerText = "帳號或密碼錯誤"; document.getElementById('login-msg').classList.remove('hidden'); }
         };
 
-        // Submit (Add or Edit)
-        document.getElementById('entry-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const isEdit = document.getElementById('inp-id').value !== "";
-            const action = isEdit ? 'edit' : 'add';
-            const btn = document.getElementById('btn-submit'); btn.disabled = true;
-
-            const formData = {
-                action: action,
-                id: isEdit ? document.getElementById('inp-id').value : Date.now().toString(),
-                date: document.getElementById('inp-date').value,
-                type: document.getElementById('inp-type').value,
-                projectId: document.getElementById('inp-project').value,
-                category: document.getElementById('inp-category').value,
-                summary: document.getElementById('inp-summary').value,
-                amount: document.getElementById('inp-amount').value,
-                payee: document.getElementById('inp-payee').value,
-                note: document.getElementById('inp-note').value,
-                createdBy: state.currentUser.id 
-            };
-
-            try {
-                await fetch(state.apiUrl, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(formData) });
-                
-                // 樂觀更新
-                if(isEdit) {
-                    const idx = state.transactions.findIndex(t => t.id == formData.id);
-                    if(idx !== -1) {
-                        // 保留原始 createdBy 和 isPaid
-                        formData.createdBy = state.transactions[idx].createdBy;
-                        formData.isPaid = state.transactions[idx].isPaid; 
-                        state.transactions[idx] = formData;
-                    }
-                } else {
-                    formData.isPaid = 'FALSE'; // 新增預設未付款
-                    state.transactions.unshift(formData);
-                }
-
-                updateUI(); cancelEdit();
-                if(!isEdit && formData.type === 'expense') openVoucher(formData);
-                showToast(isEdit ? '修改成功' : '新增成功');
-            } catch (e) { showToast('操作失敗', 'error'); } finally { btn.disabled = false; }
-        };
-
-        // Edit Mode
-        function startEdit(tString) {
-            const t = JSON.parse(tString);
-            document.getElementById('inp-id').value = t.id;
-            document.getElementById('inp-date').value = t.date;
-            document.getElementById('inp-amount').value = t.amount;
-            document.getElementById('inp-summary').value = t.summary;
-            document.getElementById('inp-payee').value = t.payee;
-            document.getElementById('inp-note').value = t.note;
-            
-            // Set Type triggers category update
-            setType(t.type); 
-            // Wait a tick for categories to populate
-            setTimeout(() => {
-                document.getElementById('inp-project').value = t.projectId;
-                document.getElementById('inp-category').value = t.category;
-            }, 50);
-
-            // UI Changes
-            document.getElementById('form-title').innerText = "修改紀錄";
-            document.getElementById('edit-mode-indicator').classList.remove('hidden');
-            document.getElementById('btn-submit').innerHTML = '<i data-lucide="refresh-cw" class="w-5 h-5 mr-2"></i> 確認更新';
-            document.getElementById('btn-submit').className = 'w-full bg-amber-500 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center';
-            document.getElementById('btn-cancel-edit').classList.remove('hidden');
-            
-            switchTab('entry');
+        // 報表產生
+        function openReportModal() {
+            const sel = document.getElementById('rpt-project');
+            sel.innerHTML = '<option value="ALL">全部計畫 (All Projects)</option>' + state.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+            document.getElementById('rpt-month').value = new Date().toISOString().slice(0, 7);
+            document.getElementById('report-modal').classList.remove('hidden');
         }
 
-        function cancelEdit() {
-            document.getElementById('entry-form').reset();
-            document.getElementById('inp-id').value = "";
-            document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
-            document.getElementById('form-title').innerText = "新增紀錄";
-            document.getElementById('edit-mode-indicator').classList.add('hidden');
-            document.getElementById('btn-cancel-edit').classList.add('hidden');
-            setType('expense'); // Reset UI style
-        }
-
-        // Toggle Payment (Treasurer)
-        async function togglePayment(id) {
-            // Find current status for optimistic update
-            const t = state.transactions.find(x => String(x.id) === String(id));
-            if(!t) return;
-            
-            const newStatus = (t.isPaid === 'TRUE' || t.isPaid === true) ? 'FALSE' : 'TRUE';
-            t.isPaid = newStatus; // Optimistic update
-            updateUI();
-
-            try {
-                await fetch(state.apiUrl, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'togglePayment', id: id}) });
-                showToast('匯款狀態已更新');
-            } catch (e) { showToast('更新失敗', 'error'); }
-        }
-
-        // UI Update
-        function updateUI() {
-            if(!state.currentUser) return;
-            const user = state.currentUser;
-            const isAdmin = user.role === 'admin';
-            const isTreasurer = user.role === 'treasurer' || isAdmin; // Admin implies Treasurer rights
-
-            // Dashboard & Projects logic (Same as before)
-            const income = state.transactions.filter(t=>t.type==='income').reduce((a,c)=>a+(+c.amount||0),0);
-            const expense = state.transactions.filter(t=>t.type==='expense').reduce((a,c)=>a+(+c.amount||0),0);
-            document.getElementById('total-income').innerText = '$'+income.toLocaleString();
-            document.getElementById('total-expense').innerText = '$'+expense.toLocaleString();
-            
-            const pStats = document.getElementById('project-stats'); pStats.innerHTML = '';
-            const pList = document.getElementById('projects-list-content'); pList.innerHTML = '';
-            state.projects.forEach(p => {
-                const used = state.transactions.filter(t=>String(t.projectId)===String(p.id) && t.type==='expense').reduce((a,c)=>a+(+c.amount||0),0);
-                const pct = Math.min(Math.round(used/(p.budget||1)*100)||0, 100);
-                pStats.innerHTML += `<div class="mb-3"><div class="flex justify-between text-sm mb-1"><span>${p.name}</span><span class="text-slate-500">$${used.toLocaleString()} / ${(p.budget||0).toLocaleString()}</span></div><div class="bg-slate-100 rounded-full h-2"><div class="h-2 rounded-full ${pct>90?'bg-rose-500':pct>70?'bg-amber-400':'bg-teal-500'}" style="width:${pct}%"></div></div></div>`;
-                pList.innerHTML += `<div class="border border-slate-200 rounded-lg p-3 flex justify-between items-center"><div><div class="font-bold text-slate-700">${p.name}</div><div class="text-xs text-slate-500">${p.funder||''}</div></div><div class="text-right"><div class="font-mono font-bold text-teal-700">$${(p.budget||0).toLocaleString()}</div></div></div>`;
+        function generateReport() {
+            const projId = document.getElementById('rpt-project').value;
+            const monthStr = document.getElementById('rpt-month').value;
+            const type = document.querySelector('input[name="rpt-type"]:checked').value;
+            let filtered = state.transactions.filter(t => {
+                // 前端再次清洗日期，確保只取前10碼 (YYYY-MM-DD)
+                const safeDate = (t.date || '').split('T')[0];
+                return ((projId==='ALL') || (String(t.projectId)===String(projId))) && (!monthStr || safeDate.startsWith(monthStr));
             });
+            filtered.sort((a,b) => new Date(a.date) - new Date(b.date));
 
-            // Selects
-            const pSelect = document.getElementById('inp-project');
-            pSelect.innerHTML = state.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-            updateCategories();
+            const projName = projId === 'ALL' ? '全部計畫' : (state.projects.find(p=>String(p.id)===String(projId))?.name || projId);
+            const rptName = type==='journal'?'日記帳':type==='ledger'?'分類帳':'收支月報表';
+            
+            let html = `<div class="text-center mb-6"><h1 class="text-2xl font-bold border-b-2 border-black inline-block pb-1">花蓮縣 'onanip 文教協會</h1><h2 class="text-xl font-bold mt-2">${rptName}</h2><p class="text-sm mt-1">範圍：${projName} | 期間：${monthStr||'全年度'}</p></div>`;
 
-            // List Logic (Permissions)
-            const tbody = document.getElementById('list-body');
-            tbody.innerHTML = state.transactions.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t => {
-                const projName = state.projects.find(p=>String(p.id)===String(t.projectId))?.name||'(未知)';
-                const tString = JSON.stringify(t).replace(/'/g, "&#39;"); // For editing
-                
-                // Permission Checks
-                const isCreator = String(t.createdBy) === String(user.id);
-                const canModify = isAdmin || isCreator;
-                const canPay = isTreasurer;
-                const isPaid = t.isPaid === 'TRUE' || t.isPaid === true;
+            if (filtered.length === 0) html += '<p class="text-center py-10 text-slate-400">查無資料</p>';
+            else if (type === 'journal') {
+                html += `<table class="preview-table"><thead><tr><th>日期</th><th>計畫</th><th>科目</th><th>摘要</th><th class="text-right">收入</th><th class="text-right">支出</th></tr></thead><tbody>`;
+                let sIn=0, sOut=0;
+                filtered.forEach(t => {
+                    const isInc = t.type === 'income'; const amt = Number(t.amount); if(isInc)sIn+=amt; else sOut+=amt;
+                    const pName = state.projects.find(p=>String(p.id)===String(t.projectId))?.name || '';
+                    const safeDate = (t.date || '').split('T')[0];
+                    html += `<tr><td>${safeDate}</td><td>${pName}</td><td>${t.category}</td><td>${t.summary}</td><td class="amount-col">${isInc?amt.toLocaleString():''}</td><td class="amount-col">${!isInc?amt.toLocaleString():''}</td></tr>`;
+                });
+                html += `<tr style="font-weight:bold;background:#f8fafc"><td colspan="4" class="text-right">合計：</td><td class="amount-col">${sIn.toLocaleString()}</td><td class="amount-col">${sOut.toLocaleString()}</td></tr></tbody></table><div class="text-right font-bold mt-2">期末結餘：$${(sIn-sOut).toLocaleString()}</div>`;
+            } else if (type === 'ledger') {
+                const groups = {}; filtered.forEach(t => { if(!groups[t.category]) groups[t.category]=[]; groups[t.category].push(t); });
+                for(const cat in groups) {
+                    const txs = groups[cat]; const total = txs.reduce((a,c)=>a+Number(c.amount),0);
+                    html += `<h3 class="font-bold mt-6 mb-2 border-l-4 border-slate-500 pl-2 bg-slate-100 p-1">${cat}</h3><table class="preview-table"><thead><tr><th>日期</th><th>摘要</th><th>計畫</th><th class="text-right">金額</th></tr></thead><tbody>`;
+                    txs.forEach(t => { const safeDate = (t.date || '').split('T')[0]; html += `<tr><td>${safeDate}</td><td>${t.summary}</td><td>${state.projects.find(p=>String(p.id)===String(t.projectId))?.name||''}</td><td class="amount-col">${Number(t.amount).toLocaleString()}</td></tr>`; });
+                    html += `<tr style="font-weight:bold"><td colspan="3" class="text-right">小計：</td><td class="amount-col">$${total.toLocaleString()}</td></tr></tbody></table>`;
+                }
+            } else {
+                const iMap={}, eMap={}; filtered.forEach(t=>{ const a=Number(t.amount); if(t.type==='income') iMap[t.category]=(iMap[t.category]||0)+a; else eMap[t.category]=(eMap[t.category]||0)+a; });
+                const tI = Object.values(iMap).reduce((a,b)=>a+b,0); const tE = Object.values(eMap).reduce((a,b)=>a+b,0);
+                html += `<div style="display:flex;gap:20px;"><div style="flex:1"><table class="preview-table"><thead><tr><th colspan="2" style="text-align:center;background:#dcfce7">收入</th></tr></thead><tbody>${Object.entries(iMap).map(([k,v])=>`<tr><td>${k}</td><td class="amount-col">${v.toLocaleString()}</td></tr>`).join('')}<tr style="font-weight:bold"><td>合計</td><td class="amount-col">${tI.toLocaleString()}</td></tr></tbody></table></div><div style="flex:1"><table class="preview-table"><thead><tr><th colspan="2" style="text-align:center;background:#fee2e2">支出</th></tr></thead><tbody>${Object.entries(eMap).map(([k,v])=>`<tr><td>${k}</td><td class="amount-col">${v.toLocaleString()}</td></tr>`).join('')}<tr style="font-weight:bold"><td>合計</td><td class="amount-col">${tE.toLocaleString()}</td></tr></tbody></table></div></div><div class="text-center font-bold text-xl mt-4 border p-4 bg-slate-50">本期結餘：$${(tI-tE).toLocaleString()}</div>`;
+            }
 
-                return `
-                <tr class="hover:bg-slate-50 group">
-                    <td class="px-4 py-3 align-top">
-                        <div class="font-mono text-slate-500 text-xs">${t.date}</div>
-                        <div class="text-xs text-slate-400 truncate max-w-[100px]">${projName}</div>
-                        <div class="text-sm font-medium text-slate-800">${t.summary}</div>
-                    </td>
-                    <td class="px-4 py-3 text-right align-top">
-                        <div class="font-mono font-bold ${t.type==='income'?'text-emerald-600':'text-rose-600'}">${t.type==='income'?'+':'-'}${Number(t.amount).toLocaleString()}</div>
-                        <div class="flex justify-end items-center mt-1 space-x-1">
-                            ${canPay ? 
-                                `<button onclick="togglePayment('${t.id}')" class="text-[10px] px-2 py-0.5 rounded-full border cursor-pointer ${isPaid ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200'}">
-                                    ${isPaid ? '已匯款' : '未匯款'}
-                                </button>` : 
-                                `<span class="text-[10px] px-2 py-0.5 rounded-full border ${isPaid ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-300 border-slate-100'}">
-                                    ${isPaid ? '已匯款' : '未匯款'}
-                                </span>`
-                            }
-                        </div>
-                    </td>
-                    <td class="px-4 py-3 text-center align-top">
-                        <div class="flex justify-center space-x-1">
-                            ${ (t.type === 'expense' && canModify) ? `<button onclick='openVoucher(${tString})' class="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded"><i data-lucide="printer" class="w-4 h-4"></i></button>` : ''}
-                            ${ canModify ? `<button onclick='startEdit(${JSON.stringify(tString)})' class="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded"><i data-lucide="edit-3" class="w-4 h-4"></i></button>` : ''}
-                            ${ canModify ? `<button onclick="deleteItem('${t.id}')" class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
-                        </div>
-                    </td>
-                </tr>`;
-            }).join('');
-            lucide.createIcons();
+            // 修正核章欄位
+            html += `<table class="sign-table"><tr><th>理事長</th><th>總幹事</th><th>會計</th><th>出納</th><th>經辦人</th></tr><tr><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td></tr></table>`;
+            document.getElementById('print-content').innerHTML = html;
+            document.getElementById('report-modal').classList.add('hidden');
+            document.getElementById('print-modal').classList.remove('hidden');
         }
 
-        // ... Rest of the helper functions (setType, switchTab, voucher, etc. - same as V10) ...
-        function updateCategories() { const type = document.getElementById('inp-type').value; const cSelect = document.getElementById('inp-category'); const opts = state.categories.filter(c=>c.type===type); cSelect.innerHTML = opts.map(c=>`<option value="${c.name}">${c.name}</option>`).join(''); }
-        function saveAndConnect() { const url = document.getElementById('api-url-input').value.trim(); if (!url) return showToast('請輸入網址', 'error'); localStorage.setItem('onanip_url', url); state.apiUrl = url; fetchData(); }
-        function showSettingsOnly() { document.getElementById('login-overlay').classList.add('hidden'); switchTab('settings'); }
-        function logout() { state.currentUser = null; document.getElementById('login-id').value = ''; document.getElementById('login-pwd').value = ''; document.getElementById('login-msg').classList.add('hidden'); document.getElementById('login-overlay').classList.remove('hidden'); document.getElementById('navbar').classList.replace('bg-teal-700', 'bg-slate-700'); }
-        function switchTab(id) { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); document.getElementById('view-'+id).classList.remove('hidden'); document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('text-teal-600', 'text-slate-400')); const map = {'dashboard':0, 'entry':1, 'list':2, 'projects':3}; if(map[id]!==undefined && document.querySelectorAll('.nav-btn')[map[id]]) document.querySelectorAll('.nav-btn')[map[id]].classList.replace('text-slate-400', 'text-teal-600'); document.querySelectorAll('.desktop-nav-btn').forEach(b => { b.classList.remove('text-teal-300', 'bg-white/10'); b.classList.add('text-slate-300', 'hover:bg-white/10'); }); if(map[id]!==undefined && document.querySelectorAll('.desktop-nav-btn')[map[id]]) { const b = document.querySelectorAll('.desktop-nav-btn')[map[id]]; b.classList.remove('text-slate-300', 'hover:bg-white/10'); b.classList.add('text-teal-300', 'bg-white/10'); } }
-        
-        function openVoucher(transaction) { const proj = state.projects.find(p => String(p.id) === String(transaction.projectId)) || {name: '未知計畫', id: 'N/A'}; document.getElementById('v-proj-id').innerText = proj.id; document.getElementById('v-id').innerText = String(transaction.id).slice(-6); document.getElementById('v-proj-name').innerText = proj.name; document.getElementById('v-date').innerText = transaction.date; document.getElementById('v-category').innerText = transaction.category; document.getElementById('v-amount').innerText = '$' + Number(transaction.amount).toLocaleString(); document.getElementById('v-summary').innerText = transaction.summary; document.getElementById('v-note').innerText = transaction.note || ''; document.getElementById('v-amount-chinese').innerText = digitToChinese(transaction.amount); document.getElementById('voucher-modal').classList.remove('hidden'); }
-        function closeVoucher() { document.getElementById('voucher-modal').classList.add('hidden'); }
-        function digitToChinese(n) { const digit = ['零', '壹', '貳', '參', '肆', '伍', '陸', '柒', '捌', '玖']; const unit = [['元', '萬', '億'], ['', '拾', '佰', '仟']]; let num = Math.abs(n); let s = ''; for (let i = 0; i < unit[0].length && num > 0; i++) { let p = ''; for (let j = 0; j < unit[1].length && num > 0; j++) { p = digit[num % 10] + unit[1][j] + p; num = Math.floor(num / 10); } s = p.replace(/(零.)*零$/, '').replace(/^$/, '零') + unit[0][i] + s; } return s.replace(/(零.)*零元/, '元').replace(/(零.)+/g, '零').replace(/^整$/, '零元整'); }
-        function showLoading(show) { document.getElementById('loading').classList.toggle('hidden', !show); }
-        function showToast(msg, type='success') { const t = document.getElementById('toast'); t.innerText = msg; t.className = `fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[200] text-white transition-all duration-300 transform translate-y-0 opacity-100 ${type==='error'?'bg-rose-600':'bg-emerald-600'}`; setTimeout(()=>t.classList.add('translate-y-[-20px]','opacity-0'), 3000); }
-        function exportCSV() { const csv = "\uFEFF日期,類型,計畫,科目,摘要,金額,匯款\n" + state.transactions.map(t=>`${t.date},${t.type},${state.projects.find(p=>String(p.id)===String(t.projectId))?.name},${t.category},"${t.summary}",${t.amount},${t.isPaid === 'TRUE' ? '是' : '否'}`).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='onanip_data.csv'; a.click(); }
+        // Voucher
+        function openVoucher(transaction) {
+            const proj = state.projects.find(p => String(p.id) === String(transaction.projectId)) || {name: '未知計畫', id: 'N/A'};
+            const safeDate = (transaction.date || '').split('T')[0];
+            const content = `
+                <div class="text-center mb-6"><h1 class="text-2xl font-bold tracking-widest mb-2 border-b-2 border-black inline-block pb-1">花蓮縣 'onanip 文教協會</h1><h2 class="text-xl font-bold mt-2">支用單據黏貼憑證用紙</h2></div>
+                <div class="flex justify-between mb-2 font-mono text-sm"><div><span class="font-bold">計畫：</span>${proj.id}</div><div><span class="font-bold">編號：</span>${String(transaction.id).slice(-6)}</div></div>
+                <table class="preview-table mb-4 text-sm">
+                    <tr><th>計畫名稱</th><td colspan="3">${proj.name}</td><th>申請日期</th><td>${safeDate}</td></tr>
+                    <tr><th>科目</th><td colspan="3">${transaction.category}</td><th>金額</th><td class="font-bold font-mono text-lg">$${Number(transaction.amount).toLocaleString()}</td></tr>
+                    <tr><th>摘要</th><td colspan="5" class="h-16 align-top">${transaction.summary}</td></tr>
+                    <tr><th>備註</th><td colspan="5">${transaction.note || ''}</td></tr>
+                </table>
+                <div class="attachment-area">憑 證 黏 貼 處</div>
+                <div class="text-xs mb-1">合計新台幣：<span class="text-base ml-2">${digitToChinese(transaction.amount)}</span></div>
+                <table class="preview-table text-center"><tr><th class="w-1/5">理事長</th><th class="w-1/5">總幹事</th><th class="w-1/5">會計</th><th class="w-1/5">驗收</th><th class="w-1/5">經辦人</th></tr><tr><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td></tr></table>
+            `;
+            document.getElementById('print-content').innerHTML = content;
+            document.getElementById('print-modal').classList.remove('hidden');
+        }
+
+        document.getElementById('entry-form').onsubmit = async (e) => { e.preventDefault(); if(!state.apiUrl) return showToast('請先連線','error'); const isEdit=document.getElementById('inp-id').value!==""; const btn=document.getElementById('btn-submit'); btn.disabled=true; const formData={ action:isEdit?'edit':'add', id:isEdit?document.getElementById('inp-id').value:Date.now().toString(), date:document.getElementById('inp-date').value, type:document.getElementById('inp-type').value, projectId:document.getElementById('inp-project').value, category:document.getElementById('inp-category').value, summary:document.getElementById('inp-summary').value, amount:document.getElementById('inp-amount').value, payee:document.getElementById('inp-payee').value, note:document.getElementById('inp-note').value, createdBy:state.currentUser.id }; try { await fetch(state.apiUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(formData)}); if(isEdit){ const idx=state.transactions.findIndex(t=>t.id==formData.id); if(idx!==-1){ formData.createdBy=state.transactions[idx].createdBy; formData.isPaid=state.transactions[idx].isPaid; state.transactions[idx]=formData; } } else { formData.isPaid='FALSE'; state.transactions.unshift(formData); } updateUI(); cancelEdit(); if(!isEdit && formData.type==='expense'){ openVoucher(formData); showToast('儲存成功！請列印'); } else { showToast('操作成功'); } } catch(e){ showToast('失敗','error'); } finally { btn.disabled=false; } };
+        async function togglePayment(id) { const t=state.transactions.find(x=>String(x.id)===String(id)); if(!t)return; const newStatus=(String(t.isPaid).toUpperCase()==='TRUE')?'FALSE':'TRUE'; t.isPaid=newStatus; updateUI(); try{ await fetch(state.apiUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'togglePayment',id:id})}); }catch(e){} }
+        function updateUI() { if(!state.currentUser)return; const user=state.currentUser; const isAdmin=user.role==='admin'; const isTreasurer=user.role==='treasurer'||isAdmin; const inc=state.transactions.filter(t=>t.type==='income').reduce((a,c)=>a+(+c.amount||0),0); const exp=state.transactions.filter(t=>t.type==='expense').reduce((a,c)=>a+(+c.amount||0),0); document.getElementById('total-income').innerText='$'+inc.toLocaleString(); document.getElementById('total-expense').innerText='$'+exp.toLocaleString(); const pStats=document.getElementById('project-stats'); pStats.innerHTML=''; const pList=document.getElementById('projects-list-content'); pList.innerHTML=''; state.projects.forEach(p=>{ const used=state.transactions.filter(t=>String(t.projectId)===String(p.id)&&t.type==='expense').reduce((a,c)=>a+(+c.amount||0),0); const pct=Math.min(Math.round(used/(p.budget||1)*100)||0,100); pStats.innerHTML+=`<div class="mb-3"><div class="flex justify-between text-sm mb-1"><span>${p.name}</span><span class="text-slate-500">$${used.toLocaleString()} / ${(p.budget||0).toLocaleString()}</span></div><div class="bg-slate-100 rounded-full h-2"><div class="h-2 rounded-full ${pct>90?'bg-rose-500':pct>70?'bg-amber-400':'bg-teal-500'}" style="width:${pct}%"></div></div></div>`; pList.innerHTML+=`<div class="border border-slate-200 rounded-lg p-3 flex justify-between items-center"><div><div class="font-bold text-slate-700">${p.name}</div><div class="text-xs text-slate-500">${p.funder||''}</div></div><div class="text-right"><div class="font-mono font-bold text-teal-700">$${(p.budget||0).toLocaleString()}</div></div></div>`; }); const pSelect=document.getElementById('inp-project'); const savedP=pSelect.value; pSelect.innerHTML=state.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join(''); if(savedP)pSelect.value=savedP; updateCategories(); const tbody=document.getElementById('list-body'); tbody.innerHTML=state.transactions.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t=>{ const projName=state.projects.find(p=>String(p.id)===String(t.projectId))?.name||'(未知)'; const tString=JSON.stringify(t).replace(/'/g,"&#39;"); const isPaid=String(t.isPaid).toUpperCase()==='TRUE'; const isLocked=isPaid; const canModify=!isLocked&&(isAdmin||String(t.createdBy)===String(user.id)); const canPay=isTreasurer; const safeDate=(t.date||'').split('T')[0]; return `<tr class="hover:bg-slate-50 group"><td class="px-4 py-3 align-top"><div class="font-mono text-slate-500 text-xs">${safeDate}</div><div class="text-xs text-slate-400 truncate max-w-[100px]">${projName}</div><div class="text-sm font-medium text-slate-800">${t.summary}</div></td><td class="px-4 py-3 text-right align-top"><div class="font-mono font-bold ${t.type==='income'?'text-emerald-600':'text-rose-600'}">${t.type==='income'?'+':'-'}${Number(t.amount).toLocaleString()}</div><div class="flex justify-end mt-1">${canPay?`<button onclick="togglePayment('${t.id}')" class="text-[10px] px-2 py-0.5 rounded-full border cursor-pointer ${isPaid?'bg-emerald-100 text-emerald-700 border-emerald-200':'bg-slate-100 text-slate-400 border-slate-200'}">${isPaid?'已匯款':'未匯款'}</button>`:`<span class="text-[10px] px-2 py-0.5 rounded-full border ${isPaid?'bg-emerald-50 text-emerald-600 border-emerald-100':'bg-slate-50 text-slate-300 border-slate-100'}">${isPaid?'已匯款':'未匯款'}</span>`}</div></td><td class="px-4 py-3 text-center align-top"><div class="flex justify-center space-x-1">${(t.type==='expense')?`<button onclick='openVoucher(${tString})' class="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded"><i data-lucide="printer" class="w-4 h-4"></i></button>`:''}${isLocked?`<span class="p-1.5 text-slate-300"><i data-lucide="lock" class="w-4 h-4"></i></span>`:(canModify?`<button onclick='startEdit(${JSON.stringify(tString)})' class="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded"><i data-lucide="edit-3" class="w-4 h-4"></i></button><button onclick="deleteItem('${t.id}')" class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`:'')}</div></td></tr>`; }).join(''); lucide.createIcons(); }
+        function startEdit(tString){const t=JSON.parse(tString);document.getElementById('inp-id').value=t.id;document.getElementById('inp-date').value=(t.date||'').split('T')[0];document.getElementById('inp-amount').value=t.amount;document.getElementById('inp-summary').value=t.summary;document.getElementById('inp-payee').value=t.payee;document.getElementById('inp-note').value=t.note;setType(t.type);setTimeout(()=>{document.getElementById('inp-project').value=t.projectId;document.getElementById('inp-category').value=t.category;},50);document.getElementById('form-title').innerText="修改紀錄";document.getElementById('edit-mode-indicator').classList.remove('hidden');document.getElementById('btn-submit').innerHTML='<i data-lucide="refresh-cw" class="w-5 h-5 mr-2"></i> 確認更新';document.getElementById('btn-submit').className='w-full bg-amber-500 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center';document.getElementById('btn-cancel-edit').classList.remove('hidden');switchTab('entry');}
+        function cancelEdit(){document.getElementById('entry-form').reset();document.getElementById('inp-id').value="";document.getElementById('inp-date').value=new Date().toISOString().split('T')[0];document.getElementById('form-title').innerText="新增紀錄";document.getElementById('edit-mode-indicator').classList.add('hidden');document.getElementById('btn-cancel-edit').classList.add('hidden');setType('expense');}
+        function updateCategories(){const type=document.getElementById('inp-type').value;const cSelect=document.getElementById('inp-category');const opts=state.categories.filter(c=>c.type===type);cSelect.innerHTML=opts.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');}
+        function setType(t){document.getElementById('inp-type').value=t;const btnE=document.getElementById('btn-expense');const btnI=document.getElementById('btn-income');const btnS=document.getElementById('btn-submit');if(t==='expense'){btnE.className='flex-1 py-3 rounded-md text-sm font-bold bg-white text-rose-600 shadow-sm transition-all';btnI.className='flex-1 py-3 rounded-md text-sm font-bold text-slate-500 transition-all';btnS.innerHTML='<i data-lucide="save" class="w-5 h-5 mr-2"></i> 儲存並列印';btnS.className='w-full bg-rose-600 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center';}else{btnI.className='flex-1 py-3 rounded-md text-sm font-bold bg-white text-emerald-600 shadow-sm transition-all';btnE.className='flex-1 py-3 rounded-md text-sm font-bold text-slate-500 transition-all';btnS.innerHTML='<i data-lucide="save" class="w-5 h-5 mr-2"></i> 儲存';btnS.className='w-full bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center';}updateCategories();}
+        function saveAndConnect(){const url=document.getElementById('api-url-input').value.trim();if(!url)return showToast('請輸入網址','error');localStorage.setItem('onanip_url',url);state.apiUrl=url;fetchData();}
+        function showSettingsOnly(){document.getElementById('login-overlay').classList.add('hidden');switchTab('settings');}
+        function logout(){state.currentUser=null;document.getElementById('login-id').value='';document.getElementById('login-pwd').value='';document.getElementById('login-msg').classList.add('hidden');document.getElementById('login-overlay').classList.remove('hidden');document.getElementById('navbar').classList.replace('bg-teal-700','bg-slate-700');}
+        function switchTab(id){document.querySelectorAll('.view-section').forEach(el=>el.classList.add('hidden'));document.getElementById('view-'+id).classList.remove('hidden');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.replace('text-teal-600','text-slate-400'));const map={'dashboard':0,'entry':1,'list':2,'projects':3};if(map[id]!==undefined&&document.querySelectorAll('.nav-btn')[map[id]])document.querySelectorAll('.nav-btn')[map[id]].classList.replace('text-slate-400','text-teal-600');document.querySelectorAll('.desktop-nav-btn').forEach(b=>{b.classList.remove('text-teal-300','bg-white/10');b.classList.add('text-slate-300','hover:bg-white/10');});if(map[id]!==undefined&&document.querySelectorAll('.desktop-nav-btn')[map[id]]){const b=document.querySelectorAll('.desktop-nav-btn')[map[id]];b.classList.remove('text-slate-300','hover:bg-white/10');b.classList.add('text-teal-300','bg-white/10');}}
+        async function deleteItem(id){if(!confirm('確定刪除？'))return;state.transactions=state.transactions.filter(t=>String(t.id)!==String(id));updateUI();try{await fetch(state.apiUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete',id:id})});}catch(e){}}
+        function digitToChinese(n){const digit=['零','壹','貳','參','肆','伍','陸','柒','捌','玖'];const unit=[['元','萬','億'],['','拾','佰','仟']];let num=Math.abs(n);let s='';for(let i=0;i<unit[0].length&&num>0;i++){let p='';for(let j=0;j<unit[1].length&&num>0;j++){p=digit[num%10]+unit[1][j]+p;num=Math.floor(num/10);}s=p.replace(/(零.)*零$/,'').replace(/^$/,'零')+unit[0][i]+s;}return s.replace(/(零.)*零元/,'元').replace(/(零.)+/g,'零').replace(/^整$/,'零元整');}
+        function showLoading(show){document.getElementById('loading').classList.toggle('hidden',!show);}
+        function showToast(msg,type='success'){const t=document.getElementById('toast');t.innerText=msg;t.className=`fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[300] text-white transition-all duration-300 transform translate-y-0 opacity-100 ${type==='error'?'bg-rose-600':'bg-emerald-600'}`;setTimeout(()=>t.classList.add('translate-y-[-20px]','opacity-0'),3000);}
+        function exportCSV() { const csv = "\uFEFF日期,類型,計畫,科目,摘要,金額,匯款\n" + state.transactions.map(t=>`${(t.date||'').split('T')[0]},${t.type},${state.projects.find(p=>String(p.id)===String(t.projectId))?.name},${t.category},"${t.summary}",${t.amount},${String(t.isPaid).toUpperCase()==='TRUE'?'是':'否'}`).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='onanip_data.csv'; a.click(); }
     </script>
 </body>
 </html>
