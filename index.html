@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V17 Fixed Toast)</title>
+    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V18 Fixed Toast)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- 引入 html2pdf 用於產生 PDF -->
@@ -21,12 +21,36 @@
         .preview-table th { background-color: #f3f4f6; text-align: center; font-weight: bold; }
         .amount-col { text-align: right; font-family: monospace; }
         .sign-box { height: 80px; vertical-align: bottom; text-align: center; }
-        .attachment-area { border: 2px dashed #94a3b8; height: 180px; display: flex; align-items: center; justify-content: center; background-color: #f8fafc; color: #64748b; font-weight: bold; margin: 15px 0; }
+        /* 調整憑證黏貼處高度至 350px */
+        .attachment-area { border: 2px dashed #94a3b8; height: 350px; display: flex; align-items: center; justify-content: center; background-color: #f8fafc; color: #64748b; font-weight: bold; margin: 15px 0; }
 
         /* PDF 輸出專用調整 */
         .pdf-content {
             font-size: 12pt;
             line-height: 1.5;
+        }
+        
+        /* 預算統計資訊區塊 */
+        .budget-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            font-size: 0.9em;
+        }
+        .budget-item {
+            text-align: center;
+        }
+        .budget-label {
+            font-size: 0.8em;
+            color: #64748b;
+        }
+        .budget-value {
+            font-weight: bold;
+            font-family: monospace;
+            font-size: 1.1em;
         }
     </style>
 </head>
@@ -38,7 +62,7 @@
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-500 to-emerald-500"></div>
             <div class="text-center mb-8">
                 <div class="bg-teal-50 p-4 rounded-full inline-block mb-4 ring-4 ring-teal-100"><i data-lucide="shield-check" class="w-10 h-10 text-teal-600"></i></div>
-                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V17</h1>
+                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V18</h1>
             </div>
             <form id="login-form" class="space-y-5">
                 <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">帳號</label><input type="text" id="login-id" class="w-full p-3 border border-slate-300 rounded-lg outline-none" placeholder="user"></div>
@@ -126,7 +150,6 @@
             </div>
             <div class="bg-white rounded-xl shadow-sm overflow-hidden min-h-[300px]">
                 <table class="w-full text-sm text-left">
-                    <!-- 移除 狀態 欄位 -->
                     <thead class="bg-slate-50 text-slate-500 font-semibold border-b"><tr><th class="px-4 py-3">內容</th><th class="px-4 py-3 text-right">金額</th><th class="px-4 py-3 text-center w-[120px]">操作</th></tr></thead>
                     <tbody id="list-body" class="divide-y divide-slate-100"></tbody>
                 </table>
@@ -148,7 +171,17 @@
             <h3 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">🖨️ 產出財務報表</h3>
             <div class="space-y-4">
                 <div><label class="block text-sm font-bold text-slate-600 mb-1">篩選計畫</label><select id="rpt-project" class="w-full p-2 border rounded bg-white"><option value="ALL">全部計畫</option></select></div>
-                <div><label class="block text-sm font-bold text-slate-600 mb-1">月份</label><input type="month" id="rpt-month" class="w-full p-2 border rounded"></div>
+                <!-- 修改日期選擇區塊，加入全年度勾選 -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-600 mb-1">月份 / 期間</label>
+                    <div class="flex items-center space-x-2">
+                        <input type="month" id="rpt-month" class="flex-1 p-2 border rounded bg-white">
+                        <label class="flex items-center space-x-1 text-sm text-slate-600 bg-slate-50 px-2 py-2 rounded border cursor-pointer hover:bg-slate-100">
+                            <input type="checkbox" id="rpt-full-year" onchange="toggleReportDate()" class="rounded text-indigo-600">
+                            <span>列印全年度</span>
+                        </label>
+                    </div>
+                </div>
                 <div><label class="block text-sm font-bold text-slate-600 mb-2">報表類型</label>
                     <div class="space-y-2">
                         <label class="flex items-center p-2 border rounded hover:bg-slate-50"><input type="radio" name="rpt-type" value="journal" checked class="mr-2">日記帳 (直式)</label>
@@ -186,7 +219,7 @@
     </div>
 
     <!-- Toast & Loading & Mobile Nav -->
-    <div id="toast" class="fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[300] text-white hidden transition-all duration-300 transform translate-y-[-20px] opacity-0"><span id="toast-msg"></span></div>
+    <div id="toast" class="hidden fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[300] text-white transition-all duration-300 transform"><span id="toast-msg"></span></div>
     <div id="loading" class="fixed inset-0 bg-white/90 z-[300] hidden flex flex-col items-center justify-center backdrop-blur-sm"><i data-lucide="loader-2" class="w-12 h-12 animate-spin text-teal-600 mb-4"></i><p class="text-slate-600 font-bold text-lg">處理中...</p></div>
     <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2 flex justify-around z-50 pb-safe no-print">
         <button onclick="switchTab('dashboard')" class="nav-btn text-teal-600 flex flex-col items-center p-2 w-full"><i data-lucide="layout-dashboard" class="w-6 h-6"></i><span class="text-[10px]">總覽</span></button>
@@ -197,6 +230,7 @@
 
     <script>
         let state = { apiUrl: '', transactions: [], projects: [], categories: [], users: [], currentUser: null };
+        let toastTimeout; // 全域變數管理 Toast 計時器
 
         window.onload = () => {
             lucide.createIcons();
@@ -287,16 +321,34 @@
             });
         }
 
+        // Toggle Full Year
+        function toggleReportDate() {
+            const isFull = document.getElementById('rpt-full-year').checked;
+            const mInput = document.getElementById('rpt-month');
+            mInput.disabled = isFull;
+            if (isFull) {
+                mInput.classList.add('bg-slate-100', 'text-slate-400');
+            } else {
+                mInput.classList.remove('bg-slate-100', 'text-slate-400');
+            }
+        }
+
         function openReportModal() {
             const sel = document.getElementById('rpt-project');
             sel.innerHTML = '<option value="ALL">全部計畫 (All Projects)</option>' + state.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
             document.getElementById('rpt-month').value = new Date().toISOString().slice(0, 7);
+            
+            // 重置全年度選項
+            document.getElementById('rpt-full-year').checked = false;
+            toggleReportDate();
+            
             document.getElementById('report-modal').classList.remove('hidden');
         }
 
         function generateReport() {
             const projId = document.getElementById('rpt-project').value;
-            const monthStr = document.getElementById('rpt-month').value;
+            const isFullYear = document.getElementById('rpt-full-year').checked;
+            const monthStr = isFullYear ? '' : document.getElementById('rpt-month').value;
             const type = document.querySelector('input[name="rpt-type"]:checked').value;
             
             let filtered = state.transactions.filter(t => {
@@ -308,16 +360,40 @@
             const projName = projId === 'ALL' ? '全部計畫' : (state.projects.find(p=>String(p.id)===String(projId))?.name || projId);
             const rptName = type==='journal'?'日記帳':type==='ledger'?'分類帳':'收支月報表';
             
-            // 設定寬度 (直式 200mm 以確保放入 A4 210mm 內 - 10mm margin, 橫式 287mm 確保放入 A4 297mm 內 - 10mm margin)
-            // A4 Portrait = 210mm, Margin 5+5=10mm, Content = 200mm
-            // A4 Landscape = 297mm, Margin 5+5=10mm, Content = 287mm
+            // 計算預算資訊 (Budget Info)
+            let totalBudget = 0;
+            let totalUsedAllTime = 0;
+
+            if (projId === 'ALL') {
+                totalBudget = state.projects.reduce((sum, p) => sum + (Number(p.budget) || 0), 0);
+                totalUsedAllTime = state.transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+            } else {
+                const p = state.projects.find(x => String(x.id) === String(projId));
+                totalBudget = Number(p ? p.budget : 0);
+                // 計算該計畫"所有時間"的累計支出，以反映真實餘額
+                totalUsedAllTime = state.transactions
+                    .filter(t => String(t.projectId) === String(projId) && t.type === 'expense')
+                    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+            }
+            const remainingBudget = totalBudget - totalUsedAllTime;
+            
+            // 設定寬度
             const contentDiv = document.getElementById('print-content');
             const isLandscape = type === 'ledger';
-            // 加入 mx-auto 讓其在預覽視窗置中
             contentDiv.className = isLandscape ? 'landscape-content bg-white p-4 pdf-content mx-auto' : 'bg-white p-4 pdf-content mx-auto';
             contentDiv.style.width = isLandscape ? '287mm' : '200mm'; 
 
-            let html = `<div class="text-center mb-6"><h1 class="text-2xl font-bold border-b-2 border-black inline-block pb-1">花蓮縣 'onanip 文教協會</h1><h2 class="text-xl font-bold mt-2">${rptName}</h2><p class="text-sm mt-1">範圍：${projName} | 期間：${monthStr||'全年度'}</p></div>`;
+            let html = `<div class="text-center mb-4"><h1 class="text-2xl font-bold border-b-2 border-black inline-block pb-1">花蓮縣 'onanip 文教協會</h1><h2 class="text-xl font-bold mt-2">${rptName}</h2><p class="text-sm mt-1">範圍：${projName} | 期間：${isFullYear ? '全年度' : monthStr}</p></div>`;
+
+            // 在日記帳和分類帳顯示預算統計
+            if (type === 'journal' || type === 'ledger') {
+                html += `
+                <div class="budget-info">
+                    <div class="budget-item"><div class="budget-label">總預算</div><div class="budget-value text-slate-700">$${totalBudget.toLocaleString()}</div></div>
+                    <div class="budget-item"><div class="budget-label">累計支出 (至今日)</div><div class="budget-value text-rose-600">$${totalUsedAllTime.toLocaleString()}</div></div>
+                    <div class="budget-item"><div class="budget-label">預算餘額</div><div class="budget-value ${remainingBudget >= 0 ? 'text-emerald-600' : 'text-red-600'}">$${remainingBudget.toLocaleString()}</div></div>
+                </div>`;
+            }
 
             if (filtered.length === 0) html += '<p class="text-center py-10 text-slate-400">查無資料</p>';
             else if (type === 'journal') {
@@ -329,7 +405,7 @@
                     const safeDate = (t.date || '').split('T')[0];
                     html += `<tr><td>${safeDate}</td><td>${pName}</td><td>${t.category}</td><td>${t.summary}</td><td class="amount-col">${isInc?amt.toLocaleString():''}</td><td class="amount-col">${!isInc?amt.toLocaleString():''}</td></tr>`;
                 });
-                html += `<tr style="font-weight:bold;background:#f8fafc"><td colspan="4" class="text-right">合計：</td><td class="amount-col">${sIn.toLocaleString()}</td><td class="amount-col">${sOut.toLocaleString()}</td></tr></tbody></table><div class="text-right font-bold mt-2">期末結餘：$${(sIn-sOut).toLocaleString()}</div>`;
+                html += `<tr style="font-weight:bold;background:#f8fafc"><td colspan="4" class="text-right">合計：</td><td class="amount-col">${sIn.toLocaleString()}</td><td class="amount-col">${sOut.toLocaleString()}</td></tr></tbody></table><div class="text-right font-bold mt-2">期間結餘：$${(sIn-sOut).toLocaleString()}</div>`;
             } else if (type === 'ledger') {
                 const groups = {}; filtered.forEach(t => { if(!groups[t.category]) groups[t.category]=[]; groups[t.category].push(t); });
                 for(const cat in groups) {
@@ -558,7 +634,33 @@
         function switchTab(id){document.querySelectorAll('.view-section').forEach(el=>el.classList.add('hidden'));document.getElementById('view-'+id).classList.remove('hidden');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.replace('text-teal-600','text-slate-400'));const map={'dashboard':0,'entry':1,'list':2,'projects':3};if(map[id]!==undefined&&document.querySelectorAll('.nav-btn')[map[id]])document.querySelectorAll('.nav-btn')[map[id]].classList.replace('text-slate-400','text-teal-600');document.querySelectorAll('.desktop-nav-btn').forEach(b=>{b.classList.remove('text-teal-300','bg-white/10');b.classList.add('text-slate-300','hover:bg-white/10');});if(map[id]!==undefined&&document.querySelectorAll('.desktop-nav-btn')[map[id]]){const b=document.querySelectorAll('.desktop-nav-btn')[map[id]];b.classList.remove('text-slate-300','hover:bg-white/10');b.classList.add('text-teal-300','bg-white/10');}}
         function digitToChinese(n){const digit=['零','壹','貳','參','肆','伍','陸','柒','捌','玖'];const unit=[['元','萬','億'],['','拾','佰','仟']];let num=Math.abs(n);let s='';for(let i=0;i<unit[0].length&&num>0;i++){let p='';for(let j=0;j<unit[1].length&&num>0;j++){p=digit[num%10]+unit[1][j]+p;num=Math.floor(num/10);}s=p.replace(/(零.)*零$/,'').replace(/^$/,'零')+unit[0][i]+s;}return s.replace(/(零.)*零元/,'元').replace(/(零.)+/g,'零').replace(/^整$/,'零元整');}
         function showLoading(show){document.getElementById('loading').classList.toggle('hidden',!show);}
-        function showToast(msg,type='success'){const t=document.getElementById('toast');t.innerText=msg;t.className=`fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[300] text-white transition-all duration-300 transform translate-y-0 opacity-100 ${type==='error'?'bg-rose-600':'bg-emerald-600'}`;setTimeout(()=>t.classList.add('translate-y-[-20px]','opacity-0'),5000);}
+        function showToast(msg, type='success') {
+            const t = document.getElementById('toast');
+            // 清除之前的計時器，防止快速點擊時提早消失
+            if (toastTimeout) clearTimeout(toastTimeout);
+            
+            t.innerText = msg;
+            // 移除 hidden，顯示元素
+            t.classList.remove('hidden');
+            
+            // 設定顯示樣式
+            const baseClass = "fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[300] text-white transition-all duration-300 transform";
+            const bgClass = type === 'error' ? 'bg-rose-600' : 'bg-emerald-600';
+            
+            // 立即設定為顯示狀態 (不透明, 位置正常)
+            t.className = `${baseClass} ${bgClass} translate-y-0 opacity-100`;
+            
+            // 5秒後開始消失動畫
+            toastTimeout = setTimeout(() => {
+                // 設定為隱藏狀態 (透明, 上移)
+                t.className = `${baseClass} ${bgClass} translate-y-[-20px] opacity-0`;
+                
+                // 等待動畫結束 (300ms) 後加上 hidden
+                setTimeout(() => {
+                    t.classList.add('hidden');
+                }, 300);
+            }, 5000);
+        }
     </script>
 </body>
 </html>
