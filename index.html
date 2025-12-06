@@ -4,25 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>花蓮縣 'onanip 文教協會 - 會計系統</title>
-    <!-- 引入 Tailwind CSS (美化介面) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 Lucide Icons (圖示) -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- 引入 Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-    
     <style>
         body { font-family: 'Noto Sans TC', sans-serif; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        /* 隱藏滾動條但保持功能 */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 pb-20 md:pb-0">
 
-    <!-- 頂部導航欄 -->
+    <!-- 導航欄 -->
     <nav id="navbar" class="bg-slate-700 text-white shadow-lg sticky top-0 z-50 transition-colors duration-300">
         <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -32,9 +25,9 @@
                 <div>
                     <h1 class="text-lg font-bold tracking-wide hidden md:block">花蓮縣 'onanip 文教協會</h1>
                     <h1 class="text-lg font-bold tracking-wide md:hidden">'onanip 會計</h1>
-                    <div id="connection-status" class="flex items-center space-x-2 text-xs opacity-90 text-orange-300">
+                    <div id="status-badge" class="flex items-center space-x-2 text-xs opacity-90 text-orange-300">
                         <i data-lucide="alert-circle" class="w-3 h-3"></i>
-                        <span>模擬模式</span>
+                        <span>未連線</span>
                     </div>
                 </div>
             </div>
@@ -44,583 +37,319 @@
         </div>
     </nav>
 
-    <!-- 通知訊息 (Toast) -->
+    <!-- 通知 Toast -->
     <div id="toast" class="fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-50 text-white hidden transition-all duration-300 transform translate-y-[-20px] opacity-0">
-        <span id="toast-msg">訊息內容</span>
+        <span id="toast-msg">訊息</span>
     </div>
 
     <!-- 載入中遮罩 -->
-    <div id="loading-overlay" class="fixed inset-0 bg-white/80 z-40 hidden flex flex-col items-center justify-center backdrop-blur-sm">
+    <div id="loading" class="fixed inset-0 bg-white/90 z-40 hidden flex flex-col items-center justify-center backdrop-blur-sm">
         <i data-lucide="loader-2" class="w-10 h-10 animate-spin text-teal-600 mb-2"></i>
-        <p class="text-slate-500 font-medium">資料同步中...</p>
+        <p class="text-slate-500 font-bold">資料同步中...</p>
     </div>
 
-    <!-- 主要內容區 -->
     <main class="max-w-5xl mx-auto px-4 py-6">
 
-        <!-- 1. 儀表板 (Dashboard) -->
-        <div id="view-dashboard" class="view-section fade-in">
-            <!-- 總計卡片 -->
-            <div class="grid grid-cols-2 gap-4 mb-6">
-                <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-emerald-500">
-                    <p class="text-xs text-slate-500 mb-1">本期總收入</p>
-                    <p id="dash-total-income" class="text-2xl font-bold text-slate-800">$0</p>
+        <!-- 設定頁 (預設顯示，直到連線成功) -->
+        <div id="view-settings" class="view-section fade-in">
+            <div class="bg-white rounded-2xl shadow-md p-6 border border-slate-100 max-w-xl mx-auto mt-10">
+                <h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center">
+                    <i data-lucide="link" class="w-6 h-6 mr-2 text-teal-600"></i>
+                    系統連線設定
+                </h2>
+                <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6 text-sm text-yellow-800">
+                    <p class="font-bold">⚠️ 首次使用請設定</p>
+                    <p>請貼上您 Google Apps Script 部署後產生的網址 (以 exec 結尾)。</p>
                 </div>
-                <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-rose-500">
-                    <p class="text-xs text-slate-500 mb-1">本期總支出</p>
-                    <p id="dash-total-expense" class="text-2xl font-bold text-slate-800">$0</p>
-                </div>
-            </div>
-
-            <!-- 計畫預算監控 -->
-            <div class="bg-white rounded-xl shadow-sm p-5 border border-slate-100">
-                <h3 class="font-bold text-slate-700 mb-4 flex items-center">
-                    <i data-lucide="pie-chart" class="w-5 h-5 mr-2 text-teal-600"></i>
-                    計畫預算監控
-                </h3>
-                <div id="project-stats-container" class="space-y-4">
-                    <!-- Javascript 將在此插入內容 -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">API 網址 (Web App URL)</label>
+                        <input type="text" id="api-url-input" placeholder="https://script.google.com/macros/s/..../exec" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none text-sm font-mono text-slate-600">
+                    </div>
+                    <button onclick="saveAndConnect()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg transition-colors flex justify-center items-center">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i>
+                        儲存並連線
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- 2. 記帳表單 (Entry Form) -->
+        <!-- 儀表板 -->
+        <div id="view-dashboard" class="view-section hidden fade-in">
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-emerald-500">
+                    <p class="text-xs text-slate-500 mb-1">本期總收入</p>
+                    <p id="total-income" class="text-2xl font-bold text-slate-800">$0</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-rose-500">
+                    <p class="text-xs text-slate-500 mb-1">本期總支出</p>
+                    <p id="total-expense" class="text-2xl font-bold text-slate-800">$0</p>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border border-slate-100">
+                <h3 class="font-bold text-slate-700 mb-4 flex items-center"><i data-lucide="pie-chart" class="w-5 h-5 mr-2 text-teal-600"></i> 計畫預算</h3>
+                <div id="project-stats" class="space-y-4"></div>
+            </div>
+        </div>
+
+        <!-- 記帳 -->
         <div id="view-entry" class="view-section hidden fade-in">
             <div class="bg-white rounded-2xl shadow-md p-6 border border-slate-100 max-w-2xl mx-auto">
-                <h2 class="text-lg font-bold text-slate-700 mb-6 flex items-center">
-                    <i data-lucide="file-plus" class="w-5 h-5 mr-2 text-teal-600"></i>
-                    新增傳票
-                </h2>
-                
+                <h2 class="text-lg font-bold text-slate-700 mb-6 flex items-center"><i data-lucide="file-plus" class="w-5 h-5 mr-2 text-teal-600"></i> 新增傳票</h2>
                 <form id="entry-form" class="space-y-5">
-                    <!-- 類型切換 -->
                     <div class="flex bg-slate-100 p-1 rounded-lg">
-                        <button type="button" onclick="setFormType('expense')" id="btn-type-expense" class="flex-1 py-2 rounded-md text-sm font-bold transition-all bg-white text-rose-600 shadow-sm">支出</button>
-                        <button type="button" onclick="setFormType('income')" id="btn-type-income" class="flex-1 py-2 rounded-md text-sm font-bold transition-all text-slate-500">收入</button>
+                        <button type="button" onclick="setType('expense')" id="btn-expense" class="flex-1 py-2 rounded-md text-sm font-bold bg-white text-rose-600 shadow-sm transition-all">支出</button>
+                        <button type="button" onclick="setType('income')" id="btn-income" class="flex-1 py-2 rounded-md text-sm font-bold text-slate-500 transition-all">收入</button>
                     </div>
-                    <input type="hidden" id="input-type" value="expense">
-
+                    <input type="hidden" id="inp-type" value="expense">
                     <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1">日期</label>
-                            <input type="date" id="input-date" required class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1">金額</label>
-                            <input type="number" id="input-amount" required placeholder="0" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none font-mono">
-                        </div>
+                        <input type="date" id="inp-date" required class="w-full p-2 border rounded-lg">
+                        <input type="number" id="inp-amount" required placeholder="金額" class="w-full p-2 border rounded-lg">
                     </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 mb-1">歸屬計畫</label>
-                        <select id="input-project" required class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white">
-                            <option value="" disabled selected>-- 請選擇計畫 --</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 mb-1">會計科目</label>
-                        <select id="input-category" required class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white">
-                            <!-- JS 動態生成 -->
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 mb-1">摘要</label>
-                        <input type="text" id="input-summary" required placeholder="說明用途..." class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
-                    </div>
-
+                    <select id="inp-project" required class="w-full p-2 border rounded-lg bg-white"><option value="">載入中...</option></select>
+                    <select id="inp-category" required class="w-full p-2 border rounded-lg bg-white"></select>
+                    <input type="text" id="inp-summary" required placeholder="摘要" class="w-full p-2 border rounded-lg">
                     <div class="grid grid-cols-2 gap-4">
-                         <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1">對象 (Payee)</label>
-                            <input type="text" id="input-payee" class="w-full p-2 border border-slate-300 rounded-lg outline-none">
-                         </div>
-                         <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1">備註</label>
-                            <input type="text" id="input-note" class="w-full p-2 border border-slate-300 rounded-lg outline-none">
-                         </div>
+                        <input type="text" id="inp-payee" placeholder="對象" class="w-full p-2 border rounded-lg">
+                        <input type="text" id="inp-note" placeholder="備註" class="w-full p-2 border rounded-lg">
                     </div>
-
-                    <button type="submit" id="btn-submit" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-xl shadow-md transition-transform active:scale-95 flex items-center justify-center">
-                        <i data-lucide="save" class="w-5 h-5 mr-2"></i>
-                        儲存支出
+                    <button type="submit" id="btn-submit" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl shadow-md flex justify-center items-center">
+                        <i data-lucide="save" class="w-5 h-5 mr-2"></i> 儲存
                     </button>
                 </form>
             </div>
         </div>
 
-        <!-- 3. 明細列表 (List) -->
+        <!-- 明細 -->
         <div id="view-list" class="view-section hidden fade-in">
             <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm mb-4">
-                <h3 class="font-bold text-slate-700">收支明細表</h3>
-                <button onclick="exportCSV()" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg flex items-center transition-colors">
-                    <i data-lucide="download" class="w-4 h-4 mr-2"></i>
-                    匯出 Excel
-                </button>
+                <h3 class="font-bold text-slate-700">明細列表</h3>
+                <button onclick="exportCSV()" class="text-sm bg-slate-100 px-3 py-2 rounded-lg flex items-center"><i data-lucide="download" class="w-4 h-4 mr-2"></i> 匯出Excel</button>
             </div>
-
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                            <tr>
-                                <th class="px-4 py-3 whitespace-nowrap">日期</th>
-                                <th class="px-4 py-3 whitespace-nowrap">摘要/科目</th>
-                                <th class="px-4 py-3 text-right whitespace-nowrap">金額</th>
-                                <th class="px-4 py-3 text-center">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="transaction-table-body" class="divide-y divide-slate-100">
-                            <!-- JS 動態生成 -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- 4. 設定頁面 (Settings) -->
-        <div id="view-settings" class="view-section hidden fade-in">
-            <div class="bg-white rounded-2xl shadow-md p-6 border border-slate-100">
-                <h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center">
-                    <i data-lucide="link-2" class="w-6 h-6 mr-2 text-teal-600"></i>
-                    雲端連線設定
-                </h2>
-                
-                <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6 text-sm text-blue-800">
-                    <h4 class="font-bold mb-2">如何連線到 Google Sheet?</h4>
-                    <ol class="list-decimal ml-5 space-y-1">
-                        <li>確認您已部署 Apps Script 為「網頁應用程式」。</li>
-                        <li>權限設為「所有人 (Anyone)」。</li>
-                        <li>將產生的網址貼在下方。</li>
-                    </ol>
-                </div>
-
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Google Apps Script 網址</label>
-                        <input type="text" id="input-api-url" placeholder="https://script.google.com/macros/s/..../exec" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none text-sm font-mono text-slate-600">
-                    </div>
-                    
-                    <div class="flex space-x-3">
-                        <button onclick="saveSettings()" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg transition-colors flex justify-center items-center">
-                            <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i>
-                            儲存並連線
-                        </button>
-                        <button onclick="clearSettings()" id="btn-disconnect" class="hidden px-4 border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold py-2 rounded-lg transition-colors">
-                            斷開
-                        </button>
-                    </div>
-                </div>
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-50 text-slate-500 font-semibold border-b"><tr><th class="px-4 py-3">日期</th><th class="px-4 py-3">摘要</th><th class="px-4 py-3 text-right">金額</th><th class="px-4 py-3 text-center">刪</th></tr></thead>
+                    <tbody id="list-body" class="divide-y divide-slate-100"></tbody>
+                </table>
             </div>
         </div>
 
     </main>
 
-    <!-- 手機版底部導航 -->
-    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2 md:hidden flex justify-around items-center z-50 pb-safe">
-        <button onclick="switchTab('dashboard')" class="nav-btn flex flex-col items-center p-2 rounded-lg text-teal-600" id="nav-dashboard">
-            <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
-            <span class="text-[10px] mt-1">總覽</span>
-        </button>
-        <button onclick="switchTab('entry')" class="nav-btn flex flex-col items-center p-2 rounded-lg text-slate-400" id="nav-entry">
-            <i data-lucide="plus-circle" class="w-6 h-6"></i>
-            <span class="text-[10px] mt-1">記帳</span>
-        </button>
-        <button onclick="switchTab('list')" class="nav-btn flex flex-col items-center p-2 rounded-lg text-slate-400" id="nav-list">
-            <i data-lucide="table" class="w-6 h-6"></i>
-            <span class="text-[10px] mt-1">明細</span>
-        </button>
+    <!-- 底部選單 -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-2 md:hidden flex justify-around z-50 pb-safe">
+        <button onclick="switchTab('dashboard')" class="nav-btn text-teal-600 flex flex-col items-center p-2"><i data-lucide="layout-dashboard" class="w-6 h-6"></i><span class="text-[10px]">總覽</span></button>
+        <button onclick="switchTab('entry')" class="nav-btn text-slate-400 flex flex-col items-center p-2"><i data-lucide="plus-circle" class="w-6 h-6"></i><span class="text-[10px]">記帳</span></button>
+        <button onclick="switchTab('list')" class="nav-btn text-slate-400 flex flex-col items-center p-2"><i data-lucide="table" class="w-6 h-6"></i><span class="text-[10px]">明細</span></button>
     </div>
 
-    <!-- JAVASCRIPT 邏輯核心 -->
     <script>
-        // --- 1. 資料狀態 (State) ---
-        const MOCK_PROJECTS = [
-            { id: 'PROJ_001', name: '範例-部落文化傳承計畫', budget: 500000, funder: '原民會' },
-            { id: 'PROJ_002', name: '範例-環境教育推廣案', budget: 120000, funder: '環保局' }
-        ];
-        const MOCK_CATEGORIES = [
-            { type: 'expense', name: '業務費-講師費' }, { type: 'expense', name: '業務費-材料費' }, { type: 'expense', name: '雜支' },
-            { type: 'income', name: '政府補助款' }, { type: 'income', name: '一般捐款' }
-        ];
+        let state = { apiUrl: '', transactions: [], projects: [], categories: [] };
 
-        let state = {
-            transactions: [],
-            projects: MOCK_PROJECTS,
-            categories: MOCK_CATEGORIES,
-            apiUrl: '',
-            isConnected: false
-        };
-
-        // --- 2. 初始化 (Init) ---
-        window.onload = function() {
+        // 初始化
+        window.onload = () => {
             lucide.createIcons();
-            
-            // 設定日期預設值為今天
-            document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
-
-            // 讀取設定
-            const savedUrl = localStorage.getItem('onanip_api_url');
+            document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
+            const savedUrl = localStorage.getItem('onanip_url');
             if (savedUrl) {
+                document.getElementById('api-url-input').value = savedUrl;
                 state.apiUrl = savedUrl;
-                document.getElementById('input-api-url').value = savedUrl;
-                fetchDataFromGoogleSheet(savedUrl);
-            } else {
-                // 讀取本地暫存資料
-                const localData = localStorage.getItem('onanip_local_data');
-                if (localData) state.transactions = JSON.parse(localData);
-                updateUI();
+                fetchData();
             }
-
-            // 初始化表單選單
-            updateFormOptions();
         };
 
-        // --- 3. 核心功能 (Logic) ---
+        // 功能：連線
+        async function saveAndConnect() {
+            const url = document.getElementById('api-url-input').value.trim();
+            if (!url) return showToast('請輸入網址', 'error');
+            localStorage.setItem('onanip_url', url);
+            state.apiUrl = url;
+            await fetchData();
+        }
 
-        // 從 Google Sheet 讀取資料
-        async function fetchDataFromGoogleSheet(url) {
+        async function fetchData() {
             showLoading(true);
             try {
-                const response = await fetch(url);
-                const data = await response.json();
+                // 使用 POST 方法讀取 (避免某些瀏覽器快取 GET)
+                const res = await fetch(state.apiUrl);
+                const data = await res.json();
+                if (data.status === 'error') throw new Error(data.message);
                 
-                if (data) {
-                    state.projects = data.projects || MOCK_PROJECTS;
-                    state.transactions = data.transactions || [];
-                    if (data.categories && data.categories.length > 0) {
-                        state.categories = data.categories;
-                    }
-                    setConnectionStatus(true);
-                    showToast('✅ 已同步雲端資料');
-                    updateUI();
+                state.projects = data.projects || [];
+                state.transactions = data.transactions || [];
+                state.categories = data.categories || [];
+                
+                updateUI();
+                setStatus(true);
+                showToast('✅ 連線成功');
+                if(document.getElementById('view-settings').classList.contains('hidden') === false) {
+                    switchTab('dashboard');
                 }
-            } catch (error) {
-                console.error(error);
-                showToast('❌ 連線失敗，請檢查網址', 'error');
-                setConnectionStatus(false);
+            } catch (e) {
+                console.error(e);
+                showToast('❌ 連線失敗：' + e.message, 'error');
+                setStatus(false);
             } finally {
                 showLoading(false);
             }
         }
 
-        // 儲存資料
-        async function saveData(e) {
+        // 功能：儲存
+        document.getElementById('entry-form').onsubmit = async (e) => {
             e.preventDefault();
-            
+            const btn = document.getElementById('btn-submit');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '處理中...'; btn.disabled = true;
+
             const formData = {
+                action: 'add',
                 id: Date.now().toString(),
-                date: document.getElementById('input-date').value,
-                type: document.getElementById('input-type').value,
-                projectId: document.getElementById('input-project').value,
-                category: document.getElementById('input-category').value,
-                summary: document.getElementById('input-summary').value,
-                amount: parseInt(document.getElementById('input-amount').value),
-                payee: document.getElementById('input-payee').value,
-                note: document.getElementById('input-note').value,
+                date: document.getElementById('inp-date').value,
+                type: document.getElementById('inp-type').value,
+                projectId: document.getElementById('inp-project').value,
+                category: document.getElementById('inp-category').value,
+                summary: document.getElementById('inp-summary').value,
+                amount: document.getElementById('inp-amount').value,
+                payee: document.getElementById('inp-payee').value,
+                note: document.getElementById('inp-note').value
             };
 
-            if(!formData.summary || !formData.amount || !formData.projectId) {
-                showToast('請填寫完整資訊', 'error');
-                return;
+            try {
+                // 雲端寫入 (使用 no-cors 模式發送，因 GAS 限制，無法直接讀取回傳值，但會寫入成功)
+                await fetch(state.apiUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(formData)
+                });
+                
+                // 樂觀更新 (假設成功)
+                state.transactions.unshift(formData);
+                updateUI();
+                showToast('✅ 資料已送出');
+                
+                // 清空表單
+                document.getElementById('inp-amount').value = '';
+                document.getElementById('inp-summary').value = '';
+                document.getElementById('inp-payee').value = '';
+                document.getElementById('inp-note').value = '';
+            } catch (e) {
+                showToast('⚠️ 寫入失敗', 'error');
+            } finally {
+                btn.innerHTML = originalText; btn.disabled = false;
             }
+        };
 
-            // 樂觀更新 (先更新畫面)
-            state.transactions.unshift(formData);
-            updateUI();
-
-            // 寫入後端
-            if (state.isConnected && state.apiUrl) {
-                try {
-                    await fetch(state.apiUrl, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'add', ...formData })
-                    });
-                    showToast('✅ 資料已上傳雲端');
-                } catch (err) {
-                    showToast('⚠️ 雲端寫入失敗', 'error');
-                }
-            } else {
-                localStorage.setItem('onanip_local_data', JSON.stringify(state.transactions));
-                showToast('✅ 已儲存 (本機模式)');
-            }
-
-            // 重置表單 (保留部分)
-            document.getElementById('input-amount').value = '';
-            document.getElementById('input-summary').value = '';
-            document.getElementById('input-payee').value = '';
-            document.getElementById('input-note').value = '';
-        }
-        document.getElementById('entry-form').addEventListener('submit', saveData);
-
-        // 刪除資料
-        async function deleteData(id) {
-            if(!confirm('確定要刪除嗎？')) return;
-
+        // 功能：刪除
+        async function deleteItem(id) {
+            if(!confirm('確定刪除？')) return;
             state.transactions = state.transactions.filter(t => String(t.id) !== String(id));
             updateUI();
-
-            if (state.isConnected && state.apiUrl) {
-                try {
-                    await fetch(state.apiUrl, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'delete', id: id })
-                    });
-                    showToast('🗑️ 雲端資料已刪除');
-                } catch(e) { showToast('⚠️ 刪除失敗'); }
-            } else {
-                localStorage.setItem('onanip_local_data', JSON.stringify(state.transactions));
-                showToast('🗑️ 已刪除 (本機)');
-            }
-        }
-
-        // --- 4. 介面更新 (Render) ---
-
-        function updateUI() {
-            renderDashboard();
-            renderTable();
-            renderFormOptions();
-            lucide.createIcons(); // 重新繪製圖示
-        }
-
-        function renderDashboard() {
-            // 計算總和
-            const totalIncome = state.transactions.filter(t => t.type === 'income').reduce((acc, c) => acc + (parseInt(c.amount)||0), 0);
-            const totalExpense = state.transactions.filter(t => t.type === 'expense').reduce((acc, c) => acc + (parseInt(c.amount)||0), 0);
-            
-            document.getElementById('dash-total-income').textContent = `$${totalIncome.toLocaleString()}`;
-            document.getElementById('dash-total-expense').textContent = `$${totalExpense.toLocaleString()}`;
-
-            // 計算專案進度
-            const container = document.getElementById('project-stats-container');
-            container.innerHTML = '';
-            
-            if (state.projects.length === 0) {
-                container.innerHTML = '<p class="text-center text-slate-400 text-sm">無計畫資料</p>';
-                return;
-            }
-
-            state.projects.forEach(proj => {
-                const used = state.transactions
-                    .filter(t => String(t.projectId) === String(proj.id) && t.type === 'expense')
-                    .reduce((acc, c) => acc + (parseInt(c.amount)||0), 0);
-                
-                const percent = Math.min(Math.round((used / proj.budget) * 100) || 0, 100);
-                let colorClass = 'bg-teal-500';
-                if (percent > 70) colorClass = 'bg-amber-400';
-                if (percent > 90) colorClass = 'bg-rose-500';
-
-                const html = `
-                    <div class="pb-3 border-b border-slate-50 last:border-0 last:pb-0">
-                        <div class="flex justify-between items-end mb-1">
-                            <span class="font-medium text-slate-700 text-sm">${proj.name}</span>
-                            <span class="text-xs text-slate-500">
-                                已用 <span class="font-bold text-slate-700">$${used.toLocaleString()}</span> / ${proj.budget.toLocaleString()}
-                            </span>
-                        </div>
-                        <div class="w-full bg-slate-100 rounded-full h-2">
-                            <div class="h-2 rounded-full transition-all duration-500 ${colorClass}" style="width: ${percent}%"></div>
-                        </div>
-                    </div>
-                `;
-                container.insertAdjacentHTML('beforeend', html);
-            });
-        }
-
-        function renderTable() {
-            const tbody = document.getElementById('transaction-table-body');
-            tbody.innerHTML = '';
-            
-            const sorted = [...state.transactions].sort((a,b) => new Date(b.date) - new Date(a.date));
-
-            sorted.forEach(t => {
-                const isIncome = String(t.type) === 'income';
-                const projName = state.projects.find(p => String(p.id) === String(t.projectId))?.name || '未知計畫';
-                
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-50';
-                tr.innerHTML = `
-                    <td class="px-4 py-3 align-top whitespace-nowrap">
-                        <div class="font-mono text-slate-600">${t.date}</div>
-                        <div class="text-xs text-slate-400 truncate max-w-[100px]">${projName}</div>
-                    </td>
-                    <td class="px-4 py-3 align-top">
-                        <div class="font-medium text-slate-800">${t.summary}</div>
-                        <div class="text-xs text-slate-500">${t.category}</div>
-                    </td>
-                    <td class="px-4 py-3 text-right font-mono font-bold align-top ${isIncome ? 'text-emerald-600' : 'text-rose-600'}">
-                        ${isIncome ? '+' : '-'}${parseInt(t.amount).toLocaleString()}
-                    </td>
-                    <td class="px-4 py-3 text-center">
-                        <button onclick="deleteData('${t.id}')" class="text-slate-300 hover:text-rose-500 p-1">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        // 更新表單選項 (計畫 & 科目)
-        function updateFormOptions() {
-            // 計畫
-            const projSelect = document.getElementById('input-project');
-            const currentProj = projSelect.value; // 保持當前選擇
-            projSelect.innerHTML = '<option value="" disabled selected>-- 請選擇計畫 --</option>';
-            state.projects.forEach(p => {
-                projSelect.insertAdjacentHTML('beforeend', `<option value="${p.id}">${p.name}</option>`);
-            });
-            if(currentProj) projSelect.value = currentProj;
-
-            // 科目 (根據當前類型 Expense/Income)
-            const type = document.getElementById('input-type').value;
-            const catSelect = document.getElementById('input-category');
-            catSelect.innerHTML = '';
-            
-            const filteredCats = state.categories.filter(c => c.type === type);
-            if(filteredCats.length === 0) {
-                catSelect.innerHTML = '<option>無可用科目</option>';
-            } else {
-                filteredCats.forEach(c => {
-                    catSelect.insertAdjacentHTML('beforeend', `<option value="${c.name}">${c.name}</option>`);
+            try {
+                await fetch(state.apiUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: 'delete', id: id})
                 });
-            }
+                showToast('🗑️ 已刪除');
+            } catch(e) { showToast('刪除請求失敗', 'error'); }
         }
 
-        // --- 5. 輔助功能 (Helpers) ---
-
-        function switchTab(tabId) {
-            // 隱藏所有頁面
-            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-            // 顯示選中頁面
-            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+        // UI 更新
+        function updateUI() {
+            // 儀表板
+            const income = state.transactions.filter(t=>t.type==='income').reduce((a,c)=>a+(+c.amount||0),0);
+            const expense = state.transactions.filter(t=>t.type==='expense').reduce((a,c)=>a+(+c.amount||0),0);
+            document.getElementById('total-income').innerText = '$'+income.toLocaleString();
+            document.getElementById('total-expense').innerText = '$'+expense.toLocaleString();
             
-            // 更新手機底部導航樣式
-            document.querySelectorAll('.nav-btn').forEach(el => {
-                el.classList.remove('text-teal-600');
-                el.classList.add('text-slate-400');
+            const pContainer = document.getElementById('project-stats');
+            pContainer.innerHTML = '';
+            state.projects.forEach(p => {
+                const used = state.transactions.filter(t=>String(t.projectId)===String(p.id) && t.type==='expense').reduce((a,c)=>a+(+c.amount||0),0);
+                const pct = Math.min(Math.round(used/p.budget*100)||0, 100);
+                pContainer.innerHTML += `
+                    <div class="mb-3"><div class="flex justify-between text-sm mb-1"><span>${p.name}</span><span class="text-slate-500">$${used.toLocaleString()} / ${p.budget.toLocaleString()}</span></div>
+                    <div class="bg-slate-100 rounded-full h-2"><div class="h-2 rounded-full ${pct>90?'bg-rose-500':pct>70?'bg-amber-400':'bg-teal-500'}" style="width:${pct}%"></div></div></div>`;
             });
-            const navBtn = document.getElementById(`nav-${tabId}`);
-            if(navBtn) {
-                navBtn.classList.remove('text-slate-400');
-                navBtn.classList.add('text-teal-600');
-            }
-        }
 
-        function setFormType(type) {
-            document.getElementById('input-type').value = type;
-            const btnExp = document.getElementById('btn-type-expense');
-            const btnInc = document.getElementById('btn-type-income');
-            const submitBtn = document.getElementById('btn-submit');
-            
-            if (type === 'expense') {
-                btnExp.className = 'flex-1 py-2 rounded-md text-sm font-bold transition-all bg-white text-rose-600 shadow-sm';
-                btnInc.className = 'flex-1 py-2 rounded-md text-sm font-bold transition-all text-slate-500';
-                submitBtn.className = 'w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-xl shadow-md transition-transform active:scale-95 flex items-center justify-center';
-                submitBtn.innerHTML = '<i data-lucide="save" class="w-5 h-5 mr-2"></i> 儲存支出';
-            } else {
-                btnInc.className = 'flex-1 py-2 rounded-md text-sm font-bold transition-all bg-white text-emerald-600 shadow-sm';
-                btnExp.className = 'flex-1 py-2 rounded-md text-sm font-bold transition-all text-slate-500';
-                submitBtn.className = 'w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md transition-transform active:scale-95 flex items-center justify-center';
-                submitBtn.innerHTML = '<i data-lucide="save" class="w-5 h-5 mr-2"></i> 儲存收入';
-            }
-            updateFormOptions(); // 更新科目
+            // 選單更新
+            const pSelect = document.getElementById('inp-project');
+            const savedP = pSelect.value;
+            pSelect.innerHTML = '<option value="" disabled selected>選擇計畫</option>' + state.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+            if(savedP) pSelect.value = savedP;
+            updateCategories();
+
+            // 列表更新
+            const tbody = document.getElementById('list-body');
+            tbody.innerHTML = state.transactions.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t => `
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3"><div class="font-mono text-slate-600">${t.date}</div><div class="text-xs text-slate-400">${state.projects.find(p=>String(p.id)===String(t.projectId))?.name||''}</div></td>
+                    <td class="px-4 py-3"><div class="font-medium">${t.summary}</div><div class="text-xs text-slate-500">${t.category}</div></td>
+                    <td class="px-4 py-3 text-right font-mono font-bold ${t.type==='income'?'text-emerald-600':'text-rose-600'}">${t.type==='income'?'+':'-'}${Number(t.amount).toLocaleString()}</td>
+                    <td class="px-4 py-3 text-center"><button onclick="deleteItem('${t.id}')" class="text-slate-300 hover:text-rose-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
+                </tr>`).join('');
             lucide.createIcons();
         }
 
-        function saveSettings() {
-            const url = document.getElementById('input-api-url').value.trim();
-            if (url) {
-                localStorage.setItem('onanip_api_url', url);
-                state.apiUrl = url;
-                fetchDataFromGoogleSheet(url);
-            }
+        function updateCategories() {
+            const type = document.getElementById('inp-type').value;
+            const cSelect = document.getElementById('inp-category');
+            cSelect.innerHTML = state.categories.filter(c=>c.type===type).map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
         }
 
-        function clearSettings() {
-            localStorage.removeItem('onanip_api_url');
-            state.apiUrl = '';
-            state.isConnected = false;
-            document.getElementById('input-api-url').value = '';
-            setConnectionStatus(false);
-            // 回復模擬資料
-            state.categories = MOCK_CATEGORIES;
-            state.projects = MOCK_PROJECTS;
-            showToast('已切換回模擬模式');
-            updateUI();
-        }
-
-        function setConnectionStatus(connected) {
-            state.isConnected = connected;
-            const statusEl = document.getElementById('connection-status');
-            const navbar = document.getElementById('navbar');
-            const btnDisconnect = document.getElementById('btn-disconnect');
-
-            if (connected) {
-                navbar.classList.remove('bg-slate-700');
-                navbar.classList.add('bg-teal-700');
-                statusEl.innerHTML = '<i data-lucide="check-circle" class="w-3 h-3"></i><span>雲端已連線</span>';
-                statusEl.className = 'flex items-center space-x-2 text-xs opacity-90 text-emerald-300';
-                btnDisconnect.classList.remove('hidden');
+        function setType(t) {
+            document.getElementById('inp-type').value = t;
+            const btnE = document.getElementById('btn-expense');
+            const btnI = document.getElementById('btn-income');
+            const btnS = document.getElementById('btn-submit');
+            if(t==='expense') {
+                btnE.className = btnE.className.replace('text-slate-500', 'bg-white text-rose-600 shadow-sm');
+                btnI.className = 'flex-1 py-2 rounded-md text-sm font-bold text-slate-500 transition-all';
+                btnS.className = 'w-full bg-rose-600 text-white font-bold py-3 rounded-xl shadow-md flex justify-center items-center';
             } else {
-                navbar.classList.remove('bg-teal-700');
-                navbar.classList.add('bg-slate-700');
-                statusEl.innerHTML = '<i data-lucide="alert-circle" class="w-3 h-3"></i><span>模擬模式</span>';
-                statusEl.className = 'flex items-center space-x-2 text-xs opacity-90 text-orange-300';
-                btnDisconnect.classList.add('hidden');
+                btnI.className = 'flex-1 py-2 rounded-md text-sm font-bold bg-white text-emerald-600 shadow-sm transition-all';
+                btnE.className = 'flex-1 py-2 rounded-md text-sm font-bold text-slate-500 transition-all';
+                btnS.className = 'w-full bg-emerald-600 text-white font-bold py-3 rounded-xl shadow-md flex justify-center items-center';
+            }
+            updateCategories();
+        }
+
+        function switchTab(id) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById('view-'+id).classList.remove('hidden');
+            // Update mobile nav color
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('text-teal-600', 'text-slate-400'));
+            const map = {'dashboard':0, 'entry':1, 'list':2};
+            if(map[id]!==undefined) document.querySelectorAll('.nav-btn')[map[id]].classList.replace('text-slate-400', 'text-teal-600');
+        }
+
+        function setStatus(ok) {
+            const el = document.getElementById('status-badge');
+            const nav = document.getElementById('navbar');
+            if(ok) {
+                el.innerHTML = '<i data-lucide="check-circle" class="w-3 h-3"></i><span>已連線</span>';
+                el.className = 'flex items-center space-x-2 text-xs opacity-90 text-emerald-300';
+                nav.classList.replace('bg-slate-700', 'bg-teal-700');
+            } else {
+                el.innerHTML = '<i data-lucide="alert-circle" class="w-3 h-3"></i><span>未連線</span>';
+                el.className = 'flex items-center space-x-2 text-xs opacity-90 text-orange-300';
+                nav.classList.replace('bg-teal-700', 'bg-slate-700');
             }
             lucide.createIcons();
         }
 
-        function showLoading(show) {
-            const el = document.getElementById('loading-overlay');
-            if(show) el.classList.remove('hidden');
-            else el.classList.add('hidden');
-        }
-
+        function showLoading(show) { document.getElementById('loading').classList.toggle('hidden', !show); }
         function showToast(msg, type='success') {
-            const toast = document.getElementById('toast');
-            const toastMsg = document.getElementById('toast-msg');
-            
-            toastMsg.innerText = msg;
-            toast.className = `fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-50 text-white transition-all duration-300 transform translate-y-0 opacity-100 ${type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'}`;
-            
-            setTimeout(() => {
-                toast.classList.add('translate-y-[-20px]', 'opacity-0');
-            }, 3000);
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.className = `fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-50 text-white transition-all duration-300 transform translate-y-0 opacity-100 ${type==='error'?'bg-rose-600':'bg-emerald-600'}`;
+            setTimeout(()=>t.classList.add('translate-y-[-20px]','opacity-0'), 3000);
         }
-
         function exportCSV() {
-            const headers = ['日期', '類型', '計畫代碼', '計畫名稱', '科目', '摘要', '對象', '金額', '備註'];
-            const csvContent = [
-                headers.join(','),
-                ...state.transactions.map(t => {
-                    const projName = state.projects.find(p => String(p.id) === String(t.projectId))?.name || '未知計畫';
-                    return [
-                        t.date,
-                        t.type === 'income' ? '收入' : '支出',
-                        t.projectId,
-                        `"${projName}"`,
-                        t.category,
-                        `"${t.summary}"`,
-                        t.payee || '',
-                        t.amount,
-                        t.note || ''
-                    ].join(',');
-                })
-            ].join('\n');
-
-            const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `onanip_accounting_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
+            const csv = ['日期,類型,計畫,科目,摘要,金額,備註', ...state.transactions.map(t=>`${t.date},${t.type},${state.projects.find(p=>String(p.id)===String(t.projectId))?.name},${t.category},"${t.summary}",${t.amount},${t.note}`)].join('\n');
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:'text/csv'})); a.download='onanip_data.csv'; a.click();
         }
     </script>
 </body>
