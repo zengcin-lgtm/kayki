@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V8 核銷版)</title>
+    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V10 權限版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -13,28 +13,14 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 
-        /* --- 列印專用樣式 (Print CSS) --- */
+        /* 列印樣式 */
         @media print {
-            body * { visibility: hidden; } /* 隱藏所有網頁內容 */
-            #printable-area, #printable-area * { visibility: visible; } /* 只顯示單據區域 */
-            #printable-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                margin: 0;
-                padding: 0;
-                background: white;
-            }
-            /* 強制列印背景色 (確保表格線條清晰) */
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            
-            /* 隱藏列印時不需要的按鈕 */
+            body * { visibility: hidden; }
+            #printable-area, #printable-area * { visibility: visible; }
+            #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; background: white; }
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
             .no-print { display: none !important; }
         }
-
-        /* 單據表格樣式 */
         .voucher-table { width: 100%; border-collapse: collapse; border: 2px solid black; }
         .voucher-table th, .voucher-table td { border: 1px solid black; padding: 8px; }
         .voucher-table th { background-color: #f3f4f6; text-align: center; font-weight: bold; width: 15%; }
@@ -42,6 +28,40 @@
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 pb-24 md:pb-10">
+
+    <!-- 0. 登入畫面 (Login Overlay) -->
+    <div id="login-overlay" class="fixed inset-0 bg-slate-800 z-[150] flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 fade-in">
+            <div class="text-center mb-8">
+                <div class="bg-teal-100 p-4 rounded-full inline-block mb-4">
+                    <i data-lucide="lock" class="w-8 h-8 text-teal-700"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統</h1>
+                <p class="text-sm text-slate-500 mt-2">請登入以存取資料</p>
+            </div>
+            
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">帳號</label>
+                    <input type="text" id="login-id" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-teal-500 outline-none" placeholder="輸入 ID (如: user01)">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">密碼</label>
+                    <input type="password" id="login-pwd" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-teal-500 outline-none" placeholder="輸入密碼">
+                </div>
+                <button type="submit" id="btn-login" class="w-full bg-slate-800 text-white font-bold py-3 rounded-xl hover:bg-slate-700 transition-colors flex justify-center items-center">
+                    <i data-lucide="log-in" class="w-5 h-5 mr-2"></i> 登入系統
+                </button>
+            </form>
+            
+            <div id="login-msg" class="mt-4 text-center text-rose-500 text-sm font-bold hidden"></div>
+            
+            <div class="mt-6 pt-6 border-t text-center">
+                <p class="text-xs text-slate-400">若尚未設定連線，請點擊下方</p>
+                <button onclick="showSettingsOnly()" class="text-teal-600 text-xs font-bold hover:underline mt-1">前往連線設定</button>
+            </div>
+        </div>
+    </div>
 
     <!-- 1. 導航欄 -->
     <nav id="navbar" class="bg-slate-700 text-white shadow-lg sticky top-0 z-50 transition-colors duration-300 no-print">
@@ -53,14 +73,14 @@
                 <div>
                     <h1 class="text-lg font-bold tracking-wide hidden md:block">花蓮縣 'onanip 文教協會</h1>
                     <h1 class="text-lg font-bold tracking-wide md:hidden">'onanip 會計</h1>
-                    <div id="status-badge" class="flex items-center space-x-2 text-xs opacity-90 text-orange-300">
-                        <i data-lucide="wifi-off" class="w-3 h-3"></i>
-                        <span>準備連線...</span>
+                    <!-- 使用者資訊 -->
+                    <div id="user-badge" class="flex items-center space-x-2 text-xs opacity-90 text-slate-300">
+                        <i data-lucide="user" class="w-3 h-3"></i>
+                        <span id="user-display">未登入</span>
                     </div>
                 </div>
             </div>
 
-            <!-- 平板/電腦選單 -->
             <div class="hidden md:flex space-x-2 bg-slate-800/50 p-1 rounded-lg">
                 <button onclick="switchTab('dashboard')" class="desktop-nav-btn px-4 py-2 rounded-md text-sm font-bold text-teal-300 bg-white/10 transition-colors">總覽</button>
                 <button onclick="switchTab('entry')" class="desktop-nav-btn px-4 py-2 rounded-md text-sm font-bold text-slate-300 hover:bg-white/10 transition-colors">記帳</button>
@@ -68,9 +88,14 @@
                 <button onclick="switchTab('projects')" class="desktop-nav-btn px-4 py-2 rounded-md text-sm font-bold text-slate-300 hover:bg-white/10 transition-colors">計畫</button>
             </div>
 
-            <button onclick="switchTab('settings')" class="p-2 hover:bg-white/10 rounded-full transition-colors border border-white/20">
-                <i data-lucide="settings" class="w-5 h-5"></i>
-            </button>
+            <div class="flex items-center space-x-2">
+                <button onclick="switchTab('settings')" class="p-2 hover:bg-white/10 rounded-full transition-colors border border-white/20" title="設定">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+                <button onclick="logout()" class="p-2 hover:bg-rose-600 rounded-full transition-colors border border-white/20" title="登出">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                </button>
+            </div>
         </div>
     </nav>
 
@@ -78,15 +103,18 @@
     <main class="max-w-5xl mx-auto px-4 py-6 no-print">
 
         <!-- 設定頁 -->
-        <div id="view-settings" class="view-section fade-in">
+        <div id="view-settings" class="view-section hidden fade-in">
             <div class="bg-white rounded-2xl shadow-md p-6 border border-slate-100 max-w-xl mx-auto mt-6">
                 <h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center">
                     <i data-lucide="link" class="w-6 h-6 mr-2 text-teal-600"></i> 連線設定
                 </h2>
                 <div class="space-y-4">
-                    <input type="text" id="api-url-input" class="w-full p-3 border border-slate-300 bg-slate-50 rounded-lg text-sm text-slate-600" readonly>
-                    <button onclick="forceRefresh()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg flex justify-center items-center shadow-md">
-                        <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> 重新連線
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">API 網址</label>
+                        <input type="text" id="api-url-input" placeholder="請貼上 GAS 網址..." class="w-full p-3 border border-slate-300 rounded-lg outline-none text-sm text-slate-600 font-mono">
+                    </div>
+                    <button onclick="saveAndConnect()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg flex justify-center items-center shadow-md">
+                        <i data-lucide="plug" class="w-4 h-4 mr-2"></i> 儲存並重新載入
                     </button>
                 </div>
             </div>
@@ -110,7 +138,7 @@
             </div>
         </div>
 
-        <!-- 記帳頁面 -->
+        <!-- 記帳頁 -->
         <div id="view-entry" class="view-section hidden fade-in">
             <div class="bg-white rounded-2xl shadow-md p-6 border border-slate-100 max-w-2xl mx-auto">
                 <h2 class="text-lg font-bold text-slate-700 mb-6 flex items-center"><i data-lucide="file-plus" class="w-6 h-6 mr-2 text-teal-600"></i> 新增紀錄</h2>
@@ -136,7 +164,7 @@
             </div>
         </div>
 
-        <!-- 明細頁面 -->
+        <!-- 明細頁 -->
         <div id="view-list" class="view-section hidden fade-in">
             <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm mb-4">
                 <h3 class="font-bold text-slate-700">收支明細</h3>
@@ -146,8 +174,8 @@
                 <table class="w-full text-sm text-left">
                     <thead class="bg-slate-50 text-slate-500 font-semibold border-b">
                         <tr>
-                            <th class="px-4 py-3">日期/計畫</th>
-                            <th class="px-4 py-3 text-right">金額</th>
+                            <th class="px-4 py-3">日期/摘要</th>
+                            <th class="px-4 py-3 text-right">金額/人員</th>
                             <th class="px-4 py-3 text-center">功能</th>
                         </tr>
                     </thead>
@@ -166,79 +194,32 @@
 
     </main>
 
-    <!-- 3. 單據預覽 Modal (隱藏層) -->
+    <!-- 單據 Modal -->
     <div id="voucher-modal" class="fixed inset-0 bg-black/50 z-[100] hidden flex items-center justify-center p-4 print:p-0 print:bg-white print:block">
         <div id="printable-area" class="bg-white w-full max-w-4xl p-8 rounded-lg shadow-2xl overflow-y-auto max-h-[90vh] print:max-h-none print:shadow-none print:w-full">
-            
-            <!-- 單據內容 -->
             <div class="text-center mb-6">
                 <h1 class="text-2xl font-bold tracking-widest mb-2 border-b-2 border-black inline-block pb-1">花蓮縣 'onanip 文教協會</h1>
                 <h2 class="text-xl font-bold mt-2">支用單據黏貼憑證用紙</h2>
             </div>
-
             <div class="flex justify-between mb-2 font-mono text-sm">
-                <div>
-                    <span class="font-bold">計畫代號：</span><span id="v-proj-id"></span>
-                </div>
-                <div>
-                    <span class="font-bold">單據編號：</span><span id="v-id"></span>
-                </div>
+                <div><span class="font-bold">計畫代號：</span><span id="v-proj-id"></span></div>
+                <div><span class="font-bold">單據編號：</span><span id="v-id"></span></div>
             </div>
-
             <table class="voucher-table mb-4 text-sm">
-                <tr>
-                    <th>計畫名稱</th>
-                    <td colspan="3" id="v-proj-name"></td>
-                    <th>申請日期</th>
-                    <td id="v-date"></td>
-                </tr>
-                <tr>
-                    <th>用途別科目</th>
-                    <td colspan="3" id="v-category"></td>
-                    <th>金額</th>
-                    <td id="v-amount" class="font-bold font-mono text-lg"></td>
-                </tr>
-                <tr>
-                    <th>用途摘要</th>
-                    <td colspan="5" id="v-summary" class="h-16 align-top"></td>
-                </tr>
-                <tr>
-                    <th>備註</th>
-                    <td colspan="5" id="v-note"></td>
-                </tr>
+                <tr><th>計畫名稱</th><td colspan="3" id="v-proj-name"></td><th>申請日期</th><td id="v-date"></td></tr>
+                <tr><th>用途別科目</th><td colspan="3" id="v-category"></td><th>金額</th><td id="v-amount" class="font-bold font-mono text-lg"></td></tr>
+                <tr><th>用途摘要</th><td colspan="5" id="v-summary" class="h-16 align-top"></td></tr>
+                <tr><th>備註</th><td colspan="5" id="v-note"></td></tr>
             </table>
-
-            <!-- 黏貼處 -->
-            <div class="border-2 border-dashed border-slate-400 h-64 flex items-center justify-center text-slate-400 font-bold text-xl mb-4 bg-slate-50 print:bg-white">
-                憑 證 黏 貼 處 (Receipt Attachment)
-            </div>
-
+            <div class="border-2 border-dashed border-slate-400 h-64 flex items-center justify-center text-slate-400 font-bold text-xl mb-4 bg-slate-50 print:bg-white">憑 證 黏 貼 處 (Receipt Attachment)</div>
             <div class="text-xs mb-1">合計新台幣（大寫）：<span id="v-amount-chinese" class="text-base ml-2"></span></div>
-
-            <!-- 核章區 -->
             <table class="voucher-table text-center">
-                <tr>
-                    <th class="w-1/5">理事長</th>
-                    <th class="w-1/5">總幹事</th>
-                    <th class="w-1/5">會計</th>
-                    <th class="w-1/5">驗收或證明</th>
-                    <th class="w-1/5">經辦人</th>
-                </tr>
-                <tr>
-                    <td class="sign-box"></td>
-                    <td class="sign-box"></td>
-                    <td class="sign-box"></td>
-                    <td class="sign-box"></td>
-                    <td class="sign-box"></td>
-                </tr>
+                <tr><th class="w-1/5">理事長</th><th class="w-1/5">總幹事</th><th class="w-1/5">會計</th><th class="w-1/5">驗收或證明</th><th class="w-1/5">經辦人</th></tr>
+                <tr><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td></tr>
             </table>
-
-            <!-- 按鈕區 (列印時隱藏) -->
             <div class="mt-8 flex justify-end space-x-4 no-print">
                 <button onclick="closeVoucher()" class="px-6 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-100 font-bold">關閉</button>
-                <button onclick="window.print()" class="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-bold flex items-center">
-                    <i data-lucide="printer" class="w-5 h-5 mr-2"></i> 列印 / 存為PDF
-                </button>
+                <button onclick="window.print()" class="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-bold flex items-center"><i data-lucide="printer" class="w-5 h-5 mr-2"></i> 列印 / 存為PDF</button>
             </div>
         </div>
     </div>
@@ -256,132 +237,109 @@
     </div>
 
     <script>
-        const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbyJtvTuFwqw9Iwg0PRnMu-c4epMKdN_v-QHUar0IcyFsescLMNU8niLEZ-bM-tmuqIL/exec";
-        let state = { apiUrl: '', transactions: [], projects: [], categories: [] };
+        let state = { apiUrl: '', transactions: [], projects: [], categories: [], users: [], currentUser: null };
 
+        // 初始化
         window.onload = () => {
             lucide.createIcons();
             document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
-            state.apiUrl = localStorage.getItem('onanip_url') || DEFAULT_API_URL;
-            document.getElementById('api-url-input').value = state.apiUrl;
-            fetchData();
+            
+            const savedUrl = localStorage.getItem('onanip_url');
+            if (savedUrl) {
+                state.apiUrl = savedUrl;
+                document.getElementById('api-url-input').value = savedUrl;
+                // 有網址，嘗試讀取資料(包含使用者清單)
+                fetchData(false); 
+            } else {
+                // 無網址，只顯示設定頁，登入框不顯示
+                document.getElementById('login-overlay').classList.add('hidden');
+                switchTab('settings');
+            }
         };
 
-        async function fetchData() {
+        // 連線讀取資料
+        async function fetchData(autoLogin = true) {
             showLoading(true);
             try {
                 const res = await fetch(state.apiUrl);
                 const data = await res.json();
                 if (data.status === 'error') throw new Error(data.message);
+                
                 state.projects = data.projects || [];
                 state.transactions = data.transactions || [];
                 state.categories = data.categories || [];
-                setStatus(true);
-                updateUI();
-                if(!document.getElementById('view-settings').classList.contains('hidden')) switchTab('dashboard');
+                state.users = data.users || [];
+                
+                showToast('系統已連線，請登入');
+                
+                // 顯示登入框
+                document.getElementById('login-overlay').classList.remove('hidden');
+                
             } catch (e) {
                 console.error(e);
-                showToast('連線失敗', 'error');
-                setStatus(false);
+                showToast('連線失敗，請檢查網址', 'error');
+                // 失敗則回到設定頁
+                document.getElementById('login-overlay').classList.add('hidden');
+                switchTab('settings');
             } finally { showLoading(false); }
         }
 
-        function forceRefresh() { fetchData(); }
-
-        // --- 核心：儲存並產生單據 ---
-        document.getElementById('entry-form').onsubmit = async (e) => {
+        // 登入邏輯
+        document.getElementById('login-form').onsubmit = (e) => {
             e.preventDefault();
-            const btn = document.getElementById('btn-submit');
-            btn.innerHTML = '處理中...'; btn.disabled = true;
+            const id = document.getElementById('login-id').value.trim();
+            const pwd = document.getElementById('login-pwd').value.trim();
+            const msg = document.getElementById('login-msg');
 
-            const formData = {
-                action: 'add', id: Date.now().toString(),
-                date: document.getElementById('inp-date').value,
-                type: document.getElementById('inp-type').value,
-                projectId: document.getElementById('inp-project').value,
-                category: document.getElementById('inp-category').value,
-                summary: document.getElementById('inp-summary').value,
-                amount: document.getElementById('inp-amount').value,
-                payee: document.getElementById('inp-payee').value,
-                note: document.getElementById('inp-note').value
-            };
+            // 尋找使用者
+            const user = state.users.find(u => String(u.id) === id && String(u.password) === pwd);
 
-            try {
-                // 只有支出才需要跳出單據
-                const isExpense = formData.type === 'expense';
+            if (user) {
+                state.currentUser = user;
+                document.getElementById('login-overlay').classList.add('hidden');
+                updateUI();
                 
-                await fetch(state.apiUrl, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(formData) });
-                state.transactions.unshift(formData);
-                updateUI(); 
+                // 更新右上角 Badge
+                const roleName = user.role === 'admin' ? '管理員' : '一般';
+                document.getElementById('user-display').innerText = `${user.name} (${roleName})`;
+                document.getElementById('status-badge').className = "flex items-center space-x-2 text-xs opacity-90 text-emerald-300";
+                document.getElementById('status-badge').innerHTML = '<i data-lucide="check-circle" class="w-3 h-3"></i><span>已連線</span>';
+                document.getElementById('navbar').classList.replace('bg-slate-700', 'bg-teal-700');
                 
-                // 清空表單
-                document.getElementById('inp-amount').value = '';
-                document.getElementById('inp-summary').value = '';
-
-                if (isExpense) {
-                    // 直接打開單據
-                    openVoucher(formData);
-                    showToast('儲存成功！請列印單據');
-                } else {
-                    showToast('收入儲存成功');
-                }
-
-            } catch (e) { showToast('儲存失敗', 'error'); } 
-            finally { 
-                btn.innerHTML = '<i data-lucide="save" class="w-5 h-5 mr-2"></i> 儲存並產生單據'; 
-                btn.disabled = false; 
-                lucide.createIcons(); 
+                switchTab('dashboard');
+                showToast(`歡迎回來，${user.name}`);
+            } else {
+                msg.innerText = "帳號或密碼錯誤，請檢查 Google Sheet 'Users' 分頁";
+                msg.classList.remove('hidden');
             }
         };
 
-        // --- 單據功能 ---
-        function openVoucher(transaction) {
-            const proj = state.projects.find(p => String(p.id) === String(transaction.projectId)) || {name: '未知計畫', id: 'N/A'};
-            
-            document.getElementById('v-proj-id').innerText = proj.id;
-            // 單據編號 = 系統ID後6碼
-            document.getElementById('v-id').innerText = String(transaction.id).slice(-6); 
-            document.getElementById('v-proj-name').innerText = proj.name;
-            document.getElementById('v-date').innerText = transaction.date;
-            document.getElementById('v-category').innerText = transaction.category;
-            document.getElementById('v-amount').innerText = '$' + Number(transaction.amount).toLocaleString();
-            document.getElementById('v-summary').innerText = transaction.summary;
-            document.getElementById('v-note').innerText = transaction.note || '';
-            document.getElementById('v-amount-chinese').innerText = digitToChinese(transaction.amount);
-
-            document.getElementById('voucher-modal').classList.remove('hidden');
+        function logout() {
+            state.currentUser = null;
+            document.getElementById('login-id').value = '';
+            document.getElementById('login-pwd').value = '';
+            document.getElementById('login-msg').classList.add('hidden');
+            document.getElementById('login-overlay').classList.remove('hidden');
+            document.getElementById('navbar').classList.replace('bg-teal-700', 'bg-slate-700');
         }
 
-        function closeVoucher() {
-            document.getElementById('voucher-modal').classList.add('hidden');
+        function showSettingsOnly() {
+            document.getElementById('login-overlay').classList.add('hidden');
+            switchTab('settings');
         }
 
-        // 數字轉大寫中文
-        function digitToChinese(n) {
-            const fraction = ['角', '分'];
-            const digit = ['零', '壹', '貳', '參', '肆', '伍', '陸', '柒', '捌', '玖'];
-            const unit = [['元', '萬', '億'], ['', '拾', '佰', '仟']];
-            let num = Math.abs(n);
-            let s = '';
-            for (let i = 0; i < unit[0].length && num > 0; i++) {
-                let p = '';
-                for (let j = 0; j < unit[1].length && num > 0; j++) {
-                    p = digit[num % 10] + unit[1][j] + p;
-                    num = Math.floor(num / 10);
-                }
-                s = p.replace(/(零.)*零$/, '').replace(/^$/, '零') + unit[0][i] + s;
-            }
-            return s.replace(/(零.)*零元/, '元').replace(/(零.)+/g, '零').replace(/^整$/, '零元整');
+        function saveAndConnect() {
+            const url = document.getElementById('api-url-input').value.trim();
+            if (!url) return showToast('請輸入網址', 'error');
+            localStorage.setItem('onanip_url', url);
+            state.apiUrl = url;
+            fetchData();
         }
 
-        async function deleteItem(id) {
-            if(!confirm('刪除?')) return;
-            state.transactions = state.transactions.filter(t => String(t.id) !== String(id));
-            updateUI();
-            try { await fetch(state.apiUrl, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'delete', id: id}) }); } catch(e){}
-        }
-
+        // --- UI 更新 (含權限判斷) ---
         function updateUI() {
+            if(!state.currentUser) return; // 未登入不更新UI
+
             // Dashboard
             const income = state.transactions.filter(t=>t.type==='income').reduce((a,c)=>a+(+c.amount||0),0);
             const expense = state.transactions.filter(t=>t.type==='expense').reduce((a,c)=>a+(+c.amount||0),0);
@@ -405,13 +363,17 @@
             pSelect.innerHTML = state.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
             updateCategories();
 
-            // List (加入列印按鈕)
+            // List (關鍵：權限控制)
             const tbody = document.getElementById('list-body');
             tbody.innerHTML = state.transactions.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t => {
                 const projName = state.projects.find(p=>String(p.id)===String(t.projectId))?.name||'(未知)';
-                // 將 t 物件轉為 JSON 字串以便傳遞給 openVoucher (需跳脫單引號)
                 const tString = JSON.stringify(t).replace(/'/g, "&#39;");
                 
+                // 判斷是否可刪除：Admin 或 建立者是自己
+                const canDelete = state.currentUser.role === 'admin' || String(t.createdBy) === String(state.currentUser.id);
+                // 如果 createdBy 是空的，但我是 admin，也可以刪
+                const creatorName = state.users.find(u => String(u.id) === String(t.createdBy))?.name || t.createdBy || '未知';
+
                 return `
                 <tr class="hover:bg-slate-50">
                     <td class="px-4 py-3">
@@ -421,16 +383,49 @@
                     </td>
                     <td class="px-4 py-3 text-right">
                         <div class="font-mono font-bold ${t.type==='income'?'text-emerald-600':'text-rose-600'}">${t.type==='income'?'+':'-'}${Number(t.amount).toLocaleString()}</div>
+                        <div class="text-[10px] text-slate-400 mt-1">By: ${creatorName}</div>
                     </td>
                     <td class="px-4 py-3 text-center flex justify-center space-x-2">
-                        ${t.type === 'expense' ? `<button onclick='openVoucher(${tString})' class="p-1 text-slate-400 hover:text-teal-600" title="補印單據"><i data-lucide="printer" class="w-5 h-5"></i></button>` : ''}
-                        <button onclick="deleteItem('${t.id}')" class="p-1 text-slate-400 hover:text-rose-500"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                        ${t.type === 'expense' ? `<button onclick='openVoucher(${tString})' class="p-1 text-slate-400 hover:text-teal-600" title="補印"><i data-lucide="printer" class="w-5 h-5"></i></button>` : ''}
+                        ${canDelete ? `<button onclick="deleteItem('${t.id}')" class="p-1 text-slate-400 hover:text-rose-500"><i data-lucide="trash-2" class="w-5 h-5"></i></button>` : ''}
                     </td>
                 </tr>`;
             }).join('');
             lucide.createIcons();
         }
 
+        // --- 寫入資料時帶入 currentUser.id ---
+        document.getElementById('entry-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit');
+            btn.innerHTML = '處理中...'; btn.disabled = true;
+
+            const formData = {
+                action: 'add', id: Date.now().toString(),
+                date: document.getElementById('inp-date').value,
+                type: document.getElementById('inp-type').value,
+                projectId: document.getElementById('inp-project').value,
+                category: document.getElementById('inp-category').value,
+                summary: document.getElementById('inp-summary').value,
+                amount: document.getElementById('inp-amount').value,
+                payee: document.getElementById('inp-payee').value,
+                note: document.getElementById('inp-note').value,
+                createdBy: state.currentUser.id // 紀錄建檔人
+            };
+
+            try {
+                await fetch(state.apiUrl, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(formData) });
+                state.transactions.unshift(formData);
+                updateUI(); 
+                document.getElementById('inp-amount').value = '';
+                document.getElementById('inp-summary').value = '';
+                if(formData.type==='expense') { openVoucher(formData); showToast('儲存成功'); } 
+                else { showToast('收入儲存成功'); }
+            } catch (e) { showToast('儲存失敗', 'error'); } 
+            finally { btn.innerHTML = '<i data-lucide="save" class="w-5 h-5 mr-2"></i> 儲存並產生單據'; btn.disabled = false; lucide.createIcons(); }
+        };
+
+        // --- 其他輔助 ---
         function updateCategories() {
             const type = document.getElementById('inp-type').value;
             const cSelect = document.getElementById('inp-category');
@@ -460,11 +455,9 @@
         function switchTab(id) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
             document.getElementById('view-'+id).classList.remove('hidden');
-            
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('text-teal-600', 'text-slate-400'));
             const map = {'dashboard':0, 'entry':1, 'list':2, 'projects':3};
             if(map[id]!==undefined && document.querySelectorAll('.nav-btn')[map[id]]) document.querySelectorAll('.nav-btn')[map[id]].classList.replace('text-slate-400', 'text-teal-600');
-            
             document.querySelectorAll('.desktop-nav-btn').forEach(b => { b.classList.remove('text-teal-300', 'bg-white/10'); b.classList.add('text-slate-300', 'hover:bg-white/10'); });
             if(map[id]!==undefined && document.querySelectorAll('.desktop-nav-btn')[map[id]]) {
                 const b = document.querySelectorAll('.desktop-nav-btn')[map[id]];
@@ -472,24 +465,31 @@
             }
         }
 
-        function setStatus(ok) {
-            const el = document.getElementById('status-badge');
-            el.innerHTML = ok ? '<i data-lucide="check-circle" class="w-3 h-3"></i><span>已連線</span>' : '<i data-lucide="wifi-off" class="w-3 h-3"></i><span>離線</span>';
-            el.className = ok ? 'flex items-center space-x-2 text-xs opacity-90 text-emerald-300' : 'flex items-center space-x-2 text-xs opacity-90 text-orange-300';
-            document.getElementById('navbar').className = ok ? "bg-teal-700 text-white shadow-lg sticky top-0 z-50 transition-colors duration-300 no-print" : "bg-slate-700 text-white shadow-lg sticky top-0 z-50 transition-colors duration-300 no-print";
-            lucide.createIcons();
+        async function deleteItem(id) {
+            if(!confirm('確定刪除這筆資料？')) return;
+            state.transactions = state.transactions.filter(t => String(t.id) !== String(id));
+            updateUI();
+            try { await fetch(state.apiUrl, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'delete', id: id}) }); } catch(e){}
         }
 
+        function openVoucher(transaction) {
+            const proj = state.projects.find(p => String(p.id) === String(transaction.projectId)) || {name: '未知計畫', id: 'N/A'};
+            document.getElementById('v-proj-id').innerText = proj.id;
+            document.getElementById('v-id').innerText = String(transaction.id).slice(-6); 
+            document.getElementById('v-proj-name').innerText = proj.name;
+            document.getElementById('v-date').innerText = transaction.date;
+            document.getElementById('v-category').innerText = transaction.category;
+            document.getElementById('v-amount').innerText = '$' + Number(transaction.amount).toLocaleString();
+            document.getElementById('v-summary').innerText = transaction.summary;
+            document.getElementById('v-note').innerText = transaction.note || '';
+            document.getElementById('v-amount-chinese').innerText = digitToChinese(transaction.amount);
+            document.getElementById('voucher-modal').classList.remove('hidden');
+        }
+        function closeVoucher() { document.getElementById('voucher-modal').classList.add('hidden'); }
+        function digitToChinese(n) { const digit = ['零', '壹', '貳', '參', '肆', '伍', '陸', '柒', '捌', '玖']; const unit = [['元', '萬', '億'], ['', '拾', '佰', '仟']]; let num = Math.abs(n); let s = ''; for (let i = 0; i < unit[0].length && num > 0; i++) { let p = ''; for (let j = 0; j < unit[1].length && num > 0; j++) { p = digit[num % 10] + unit[1][j] + p; num = Math.floor(num / 10); } s = p.replace(/(零.)*零$/, '').replace(/^$/, '零') + unit[0][i] + s; } return s.replace(/(零.)*零元/, '元').replace(/(零.)+/g, '零').replace(/^整$/, '零元整'); }
         function showLoading(show) { document.getElementById('loading').classList.toggle('hidden', !show); }
-        function showToast(msg, type='success') {
-            const t = document.getElementById('toast'); t.innerText = msg;
-            t.className = `fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[200] text-white transition-all duration-300 transform translate-y-0 opacity-100 ${type==='error'?'bg-rose-600':'bg-emerald-600'}`;
-            setTimeout(()=>t.classList.add('translate-y-[-20px]','opacity-0'), 3000);
-        }
-        function exportCSV() {
-            const csv = "\uFEFF日期,類型,計畫,科目,摘要,金額\n" + state.transactions.map(t=>`${t.date},${t.type},${state.projects.find(p=>String(p.id)===String(t.projectId))?.name},${t.category},"${t.summary}",${t.amount}`).join('\n');
-            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='onanip_data.csv'; a.click();
-        }
+        function showToast(msg, type='success') { const t = document.getElementById('toast'); t.innerText = msg; t.className = `fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[200] text-white transition-all duration-300 transform translate-y-0 opacity-100 ${type==='error'?'bg-rose-600':'bg-emerald-600'}`; setTimeout(()=>t.classList.add('translate-y-[-20px]','opacity-0'), 3000); }
+        function exportCSV() { const csv = "\uFEFF日期,類型,計畫,科目,摘要,金額\n" + state.transactions.map(t=>`${t.date},${t.type},${state.projects.find(p=>String(p.id)===String(t.projectId))?.name},${t.category},"${t.summary}",${t.amount}`).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='onanip_data.csv'; a.click(); }
     </script>
 </body>
 </html>
