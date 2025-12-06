@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V17 No-Payment)</title>
+    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V17 Fixed Toast)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- 引入 html2pdf 用於產生 PDF -->
@@ -269,7 +269,7 @@
             const isLandscape = document.getElementById('print-content').classList.contains('landscape-content');
             
             const opt = {
-                margin:       [10, 10, 10, 10], // 上下左右留白
+                margin:       [5, 5, 5, 5], // 0.5cm = 5mm
                 filename:     `onanip_report_${new Date().toISOString().slice(0,10)}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true },
@@ -308,11 +308,14 @@
             const projName = projId === 'ALL' ? '全部計畫' : (state.projects.find(p=>String(p.id)===String(projId))?.name || projId);
             const rptName = type==='journal'?'日記帳':type==='ledger'?'分類帳':'收支月報表';
             
-            // 設定寬度 (直式 180mm 以確保放入 A4 210mm 內, 橫式 260mm 確保放入 A4 297mm 內)
+            // 設定寬度 (直式 200mm 以確保放入 A4 210mm 內 - 10mm margin, 橫式 287mm 確保放入 A4 297mm 內 - 10mm margin)
+            // A4 Portrait = 210mm, Margin 5+5=10mm, Content = 200mm
+            // A4 Landscape = 297mm, Margin 5+5=10mm, Content = 287mm
             const contentDiv = document.getElementById('print-content');
             const isLandscape = type === 'ledger';
-            contentDiv.className = isLandscape ? 'landscape-content bg-white p-4 pdf-content' : 'bg-white p-4 pdf-content';
-            contentDiv.style.width = isLandscape ? '260mm' : '180mm'; 
+            // 加入 mx-auto 讓其在預覽視窗置中
+            contentDiv.className = isLandscape ? 'landscape-content bg-white p-4 pdf-content mx-auto' : 'bg-white p-4 pdf-content mx-auto';
+            contentDiv.style.width = isLandscape ? '287mm' : '200mm'; 
 
             let html = `<div class="text-center mb-6"><h1 class="text-2xl font-bold border-b-2 border-black inline-block pb-1">花蓮縣 'onanip 文教協會</h1><h2 class="text-xl font-bold mt-2">${rptName}</h2><p class="text-sm mt-1">範圍：${projName} | 期間：${monthStr||'全年度'}</p></div>`;
 
@@ -365,8 +368,9 @@
             const proj = state.projects.find(p => String(p.id) === String(transaction.projectId)) || {name: '未知計畫', id: 'N/A'};
             const safeDate = (transaction.date || '').split('T')[0];
             const contentDiv = document.getElementById('print-content');
-            contentDiv.className = 'bg-white p-4 pdf-content'; // 直式
-            contentDiv.style.width = '180mm'; // 調整寬度以適應 A4 Margin
+            // 直式 + 置中
+            contentDiv.className = 'bg-white p-4 pdf-content mx-auto'; 
+            contentDiv.style.width = '200mm'; // 調整寬度以適應 A4 Margin 5mm
 
             const content = `
                 <div class="text-center mb-6"><h1 class="text-2xl font-bold tracking-widest mb-2 border-b-2 border-black inline-block pb-1">花蓮縣 'onanip 文教協會</h1><h2 class="text-xl font-bold mt-2">支用單據黏貼憑證用紙</h2></div>
@@ -554,7 +558,7 @@
         function switchTab(id){document.querySelectorAll('.view-section').forEach(el=>el.classList.add('hidden'));document.getElementById('view-'+id).classList.remove('hidden');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.replace('text-teal-600','text-slate-400'));const map={'dashboard':0,'entry':1,'list':2,'projects':3};if(map[id]!==undefined&&document.querySelectorAll('.nav-btn')[map[id]])document.querySelectorAll('.nav-btn')[map[id]].classList.replace('text-slate-400','text-teal-600');document.querySelectorAll('.desktop-nav-btn').forEach(b=>{b.classList.remove('text-teal-300','bg-white/10');b.classList.add('text-slate-300','hover:bg-white/10');});if(map[id]!==undefined&&document.querySelectorAll('.desktop-nav-btn')[map[id]]){const b=document.querySelectorAll('.desktop-nav-btn')[map[id]];b.classList.remove('text-slate-300','hover:bg-white/10');b.classList.add('text-teal-300','bg-white/10');}}
         function digitToChinese(n){const digit=['零','壹','貳','參','肆','伍','陸','柒','捌','玖'];const unit=[['元','萬','億'],['','拾','佰','仟']];let num=Math.abs(n);let s='';for(let i=0;i<unit[0].length&&num>0;i++){let p='';for(let j=0;j<unit[1].length&&num>0;j++){p=digit[num%10]+unit[1][j]+p;num=Math.floor(num/10);}s=p.replace(/(零.)*零$/,'').replace(/^$/,'零')+unit[0][i]+s;}return s.replace(/(零.)*零元/,'元').replace(/(零.)+/g,'零').replace(/^整$/,'零元整');}
         function showLoading(show){document.getElementById('loading').classList.toggle('hidden',!show);}
-        function showToast(msg,type='success'){const t=document.getElementById('toast');t.innerText=msg;t.className=`fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[300] text-white transition-all duration-300 transform translate-y-0 opacity-100 ${type==='error'?'bg-rose-600':'bg-emerald-600'}`;setTimeout(()=>t.classList.add('translate-y-[-20px]','opacity-0'),3000);}
+        function showToast(msg,type='success'){const t=document.getElementById('toast');t.innerText=msg;t.className=`fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[300] text-white transition-all duration-300 transform translate-y-0 opacity-100 ${type==='error'?'bg-rose-600':'bg-emerald-600'}`;setTimeout(()=>t.classList.add('translate-y-[-20px]','opacity-0'),5000);}
     </script>
 </body>
 </html>
