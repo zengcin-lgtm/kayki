@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V15)</title>
+    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V16 Fixed)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- 引入 html2pdf 用於產生 PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans TC', sans-serif; }
@@ -13,33 +15,16 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 
-        /* --- 預設列印樣式 (直式) --- */
-        @media print {
-            @page { size: A4 portrait; margin: 15mm; } 
-            body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            body * { visibility: hidden; height: 0; overflow: hidden; }
-            .no-print, nav, #login-overlay, #toast, #loading { display: none !important; }
-            
-            #printable-area, #printable-area * { visibility: visible; height: auto; overflow: visible; }
-            #printable-area {
-                position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; background: white !important; color: black !important;
-            }
-            table { border-collapse: collapse !important; width: 100% !important; margin-bottom: 20px !important; }
-            th, td { border: 1px solid #000 !important; padding: 6px !important; font-size: 11pt !important; }
-            th { background-color: #f0f0f0 !important; font-weight: bold !important; text-align: center; }
-            .sign-box { height: 2.5cm !important; }
-            .attachment-area { border: 2px dashed #666 !important; height: 8cm !important; margin: 15px 0 !important; }
+        /* PDF 產生時的專用樣式 */
+        .pdf-mode {
+            background: white !important;
+            color: black !important;
+            padding: 20px !important;
         }
-
-        /* --- 橫式列印專用 class --- */
-        @media print {
-            .landscape-mode {
-                /* 嘗試強制橫向，部分瀏覽器支援 */
-                transform: rotate(0deg); 
-            }
-        }
-        /* 透過 JS 動態注入 @page size 樣式來控制橫向 */
-
+        .pdf-mode table { width: 100% !important; border-collapse: collapse !important; }
+        .pdf-mode th, .pdf-mode td { border: 1px solid #000 !important; padding: 6px !important; font-size: 10pt !important; }
+        .pdf-mode th { background-color: #f0f0f0 !important; }
+        
         /* 螢幕預覽樣式 */
         .preview-table { width: 100%; border-collapse: collapse; border: 1px solid #333; margin-bottom: 20px; }
         .preview-table th, .preview-table td { border: 1px solid #333; padding: 8px; }
@@ -51,16 +36,13 @@
 </head>
 <body class="bg-slate-50 text-slate-800 pb-24 md:pb-10">
 
-    <!-- 用於動態控制列印方向的 Style -->
-    <style id="print-orientation-style"></style>
-
     <!-- Login -->
     <div id="login-overlay" class="fixed inset-0 bg-slate-800 z-[150] flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 fade-in relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-500 to-emerald-500"></div>
             <div class="text-center mb-8">
                 <div class="bg-teal-50 p-4 rounded-full inline-block mb-4 ring-4 ring-teal-100"><i data-lucide="shield-check" class="w-10 h-10 text-teal-600"></i></div>
-                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V15</h1>
+                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V16</h1>
             </div>
             <form id="login-form" class="space-y-5">
                 <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">帳號</label><input type="text" id="login-id" class="w-full p-3 border border-slate-300 rounded-lg outline-none" placeholder="user"></div>
@@ -143,7 +125,7 @@
             <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm mb-4">
                 <h3 class="font-bold text-slate-700">收支明細</h3>
                 <button onclick="openReportModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center font-bold text-sm hover:bg-indigo-700 shadow-md">
-                    <i data-lucide="printer" class="w-4 h-4 mr-2"></i> 下載報表 (PDF)
+                    <i data-lucide="file-text" class="w-4 h-4 mr-2"></i> 下載報表 (PDF)
                 </button>
             </div>
             <div class="bg-white rounded-xl shadow-sm overflow-hidden min-h-[300px]">
@@ -186,12 +168,22 @@
     </div>
 
     <!-- Print Preview Modal -->
-    <div id="print-modal" class="fixed inset-0 bg-black/50 z-[250] hidden flex items-center justify-center p-4 print:p-0 print:bg-white print:block">
-        <div id="printable-area" class="bg-white w-full max-w-5xl p-8 rounded-lg shadow-2xl overflow-y-auto max-h-[90vh] print:max-h-none print:shadow-none print:w-full">
-            <div id="print-content"></div>
-            <div class="mt-8 flex justify-end space-x-4 no-print">
+    <div id="print-modal" class="fixed inset-0 bg-black/50 z-[250] hidden flex items-center justify-center p-4">
+        <!-- 增加 max-w-none 與 overflow-x-auto 讓手機也能完整檢視 -->
+        <div class="bg-white w-full max-w-3xl p-4 rounded-lg shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="font-bold text-lg text-slate-700">預覽與下載</h3>
+                <button onclick="document.getElementById('print-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            
+            <!-- 預覽區域 -->
+            <div id="printable-area" class="flex-1 overflow-y-auto overflow-x-auto bg-slate-50 p-4 border rounded">
+                <div id="print-content" class="bg-white p-4 shadow-sm mx-auto"></div>
+            </div>
+
+            <div class="mt-4 flex justify-end space-x-4">
                 <button onclick="document.getElementById('print-modal').classList.add('hidden')" class="px-6 py-2 border rounded-lg font-bold">關閉</button>
-                <button onclick="window.print()" class="px-6 py-2 bg-teal-600 text-white rounded-lg font-bold flex items-center"><i data-lucide="download" class="w-5 h-5 mr-2"></i> 下載 PDF</button>
+                <button onclick="downloadCurrentPDF()" class="px-6 py-2 bg-teal-600 text-white rounded-lg font-bold flex items-center shadow-lg active:scale-95 transition-transform"><i data-lucide="download" class="w-5 h-5 mr-2"></i> 儲存 PDF</button>
             </div>
         </div>
     </div>
@@ -217,40 +209,96 @@
             else { document.getElementById('login-overlay').classList.add('hidden'); switchTab('settings'); }
         };
 
-        // --- 設定列印方向 ---
-        function setPrintOrientation(isLandscape) {
-            const style = document.getElementById('print-orientation-style');
-            if (isLandscape) {
-                style.innerHTML = `@media print { @page { size: A4 landscape; margin: 15mm; } }`;
-            } else {
-                style.innerHTML = `@media print { @page { size: A4 portrait; margin: 15mm; } }`;
-            }
+        // --- Core Fetch Function (Fixed for Persistence) ---
+        // 關鍵修正：移除 'no-cors'，使用 text/plain 以兼容 GAS 並獲取正確回應
+        async function apiCall(payload) {
+            if (!state.apiUrl) throw new Error("未設定連線網址");
+            
+            // 使用 text/plain 避免 OPTIONS 預檢請求 (GAS 對預檢支援不佳)
+            // 伺服器端 GAS 腳本應使用 JSON.parse(e.postData.contents) 讀取
+            const res = await fetch(state.apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!res.ok) throw new Error(`Server Error: ${res.status}`);
+            const data = await res.json();
+            if (data.status === 'error') throw new Error(data.message || '操作失敗');
+            return data;
         }
 
         async function fetchData() {
             showLoading(true);
             try {
-                const res = await fetch(state.apiUrl); const data = await res.json();
+                // Initial fetch usually GET, but GAS web app implies GET. 
+                // Using fetch directly for GET
+                const res = await fetch(state.apiUrl); 
+                const data = await res.json();
                 if (data.status === 'error') throw new Error(data.message);
-                state.projects = data.projects || []; state.transactions = data.transactions || [];
-                state.categories = data.categories || []; state.users = data.users || [];
-                document.getElementById('login-overlay').classList.remove('hidden'); showToast('已連線');
-            } catch (e) { showToast('連線失敗', 'error'); document.getElementById('login-overlay').classList.add('hidden'); switchTab('settings'); } finally { showLoading(false); }
+                
+                state.projects = data.projects || []; 
+                state.transactions = data.transactions || [];
+                state.categories = data.categories || []; 
+                state.users = data.users || [];
+                
+                document.getElementById('login-overlay').classList.remove('hidden'); 
+                showToast('已連線');
+            } catch (e) { 
+                console.error(e);
+                showToast('連線失敗: ' + e.message, 'error'); 
+                document.getElementById('login-overlay').classList.add('hidden'); 
+                switchTab('settings'); 
+            } finally { 
+                showLoading(false); 
+            }
         }
 
         document.getElementById('login-form').onsubmit = (e) => {
             e.preventDefault();
-            const id = document.getElementById('login-id').value.trim(); const pwd = document.getElementById('login-pwd').value.trim();
+            const id = document.getElementById('login-id').value.trim(); 
+            const pwd = document.getElementById('login-pwd').value.trim();
             const user = state.users.find(u => String(u.id) === id && String(u.password) === pwd);
             if (user) {
-                state.currentUser = user; document.getElementById('login-overlay').classList.add('hidden');
+                state.currentUser = user; 
+                document.getElementById('login-overlay').classList.add('hidden');
                 updateUI(); switchTab('dashboard'); showToast(`歡迎 ${user.name}`);
                 document.getElementById('user-display').innerText = `${user.name} (${user.role})`;
                 document.getElementById('navbar').classList.replace('bg-slate-700', 'bg-teal-700');
-            } else { document.getElementById('login-msg').innerText = "帳號或密碼錯誤"; document.getElementById('login-msg').classList.remove('hidden'); }
+            } else { 
+                document.getElementById('login-msg').innerText = "帳號或密碼錯誤"; 
+                document.getElementById('login-msg').classList.remove('hidden'); 
+            }
         };
 
-        // 報表產生
+        // --- PDF Generation Logic ---
+        function downloadCurrentPDF() {
+            const element = document.getElementById('print-content');
+            const opt = {
+                margin:       10,
+                filename:     `onanip_report_${new Date().toISOString().slice(0,10)}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // 檢查是否為橫式報表 (分類帳)
+            if (document.getElementById('print-content').classList.contains('landscape-content')) {
+                opt.jsPDF.orientation = 'landscape';
+            }
+
+            // 在手機上生成 PDF 時顯示讀取中
+            showLoading(true);
+            html2pdf().set(opt).from(element).save().then(() => {
+                showLoading(false);
+                showToast('下載成功');
+            }).catch(err => {
+                showLoading(false);
+                showToast('PDF 產生失敗', 'error');
+                console.error(err);
+            });
+        }
+
         function openReportModal() {
             const sel = document.getElementById('rpt-project');
             sel.innerHTML = '<option value="ALL">全部計畫 (All Projects)</option>' + state.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
@@ -263,9 +311,6 @@
             const monthStr = document.getElementById('rpt-month').value;
             const type = document.querySelector('input[name="rpt-type"]:checked').value;
             
-            // 設定方向
-            setPrintOrientation(type === 'ledger');
-
             let filtered = state.transactions.filter(t => {
                 const safeDate = (t.date || '').split('T')[0];
                 return ((projId==='ALL') || (String(t.projectId)===String(projId))) && (!monthStr || safeDate.startsWith(monthStr));
@@ -275,6 +320,11 @@
             const projName = projId === 'ALL' ? '全部計畫' : (state.projects.find(p=>String(p.id)===String(projId))?.name || projId);
             const rptName = type==='journal'?'日記帳':type==='ledger'?'分類帳':'收支月報表';
             
+            // 設定容器寬度以便 html2pdf 擷取
+            const contentDiv = document.getElementById('print-content');
+            contentDiv.className = type === 'ledger' ? 'landscape-content bg-white p-4' : 'bg-white p-4';
+            contentDiv.style.width = type === 'ledger' ? '280mm' : '200mm'; // 強制寬度以適應 A4
+
             let html = `<div class="text-center mb-6"><h1 class="text-2xl font-bold border-b-2 border-black inline-block pb-1">花蓮縣 'onanip 文教協會</h1><h2 class="text-xl font-bold mt-2">${rptName}</h2><p class="text-sm mt-1">範圍：${projName} | 期間：${monthStr||'全年度'}</p></div>`;
 
             if (filtered.length === 0) html += '<p class="text-center py-10 text-slate-400">查無資料</p>';
@@ -302,7 +352,7 @@
                 html += `<div style="display:flex;gap:20px;"><div style="flex:1"><table class="preview-table"><thead><tr><th colspan="2" style="text-align:center;background:#dcfce7">收入</th></tr></thead><tbody>${Object.entries(iMap).map(([k,v])=>`<tr><td>${k}</td><td class="amount-col">${v.toLocaleString()}</td></tr>`).join('')}<tr style="font-weight:bold"><td>合計</td><td class="amount-col">${tI.toLocaleString()}</td></tr></tbody></table></div><div style="flex:1"><table class="preview-table"><thead><tr><th colspan="2" style="text-align:center;background:#fee2e2">支出</th></tr></thead><tbody>${Object.entries(eMap).map(([k,v])=>`<tr><td>${k}</td><td class="amount-col">${v.toLocaleString()}</td></tr>`).join('')}<tr style="font-weight:bold"><td>合計</td><td class="amount-col">${tE.toLocaleString()}</td></tr></tbody></table></div></div><div class="text-center font-bold text-xl mt-4 border p-4 bg-slate-50">本期結餘：$${(tI-tE).toLocaleString()}</div>`;
             }
 
-            // 報表核章：出納、會計、總幹事、理事長
+            // Signatures
             html += `<table class="sign-table" style="width:100%; border-collapse:collapse; margin-top:30px;">
                 <tr>
                     <th style="width:25%; border:1px solid #000; padding:5px; text-align:center;">理事長</th>
@@ -317,16 +367,20 @@
                     <td style="height:80px; border:1px solid #000;"></td>
                 </tr>
             </table>`;
-            document.getElementById('print-content').innerHTML = html;
+            
+            contentDiv.innerHTML = html;
             document.getElementById('report-modal').classList.add('hidden');
             document.getElementById('print-modal').classList.remove('hidden');
         }
 
         // Voucher
         function openVoucher(transaction) {
-            setPrintOrientation(false); // 單據固定直式
             const proj = state.projects.find(p => String(p.id) === String(transaction.projectId)) || {name: '未知計畫', id: 'N/A'};
             const safeDate = (transaction.date || '').split('T')[0];
+            const contentDiv = document.getElementById('print-content');
+            contentDiv.className = 'bg-white p-4'; // 直式
+            contentDiv.style.width = '200mm';
+
             const content = `
                 <div class="text-center mb-6"><h1 class="text-2xl font-bold tracking-widest mb-2 border-b-2 border-black inline-block pb-1">花蓮縣 'onanip 文教協會</h1><h2 class="text-xl font-bold mt-2">支用單據黏貼憑證用紙</h2></div>
                 <div class="flex justify-between mb-2 font-mono text-sm"><div><span class="font-bold">計畫：</span>${proj.id}</div><div><span class="font-bold">編號：</span>${String(transaction.id).slice(-6)}</div></div>
@@ -339,7 +393,6 @@
                 <div class="attachment-area">憑 證 黏 貼 處</div>
                 <div class="text-xs mb-1">合計新台幣：<span class="text-base ml-2">${digitToChinese(transaction.amount)}</span></div>
                 
-                <!-- 單據核章：經辦人、驗收證明、會計、總幹事、理事長 -->
                 <table class="preview-table text-center" style="width:100%; border-collapse:collapse;">
                     <tr>
                         <th style="width:20%; border:1px solid #000;">理事長</th>
@@ -357,13 +410,113 @@
                     </tr>
                 </table>
             `;
-            document.getElementById('print-content').innerHTML = content;
+            contentDiv.innerHTML = content;
             document.getElementById('print-modal').classList.remove('hidden');
         }
 
-        document.getElementById('entry-form').onsubmit = async (e) => { e.preventDefault(); if(!state.apiUrl) return showToast('請先連線','error'); const isEdit=document.getElementById('inp-id').value!==""; const btn=document.getElementById('btn-submit'); btn.disabled=true; const formData={ action:isEdit?'edit':'add', id:isEdit?document.getElementById('inp-id').value:Date.now().toString(), date:document.getElementById('inp-date').value, type:document.getElementById('inp-type').value, projectId:document.getElementById('inp-project').value, category:document.getElementById('inp-category').value, summary:document.getElementById('inp-summary').value, amount:document.getElementById('inp-amount').value, payee:document.getElementById('inp-payee').value, note:document.getElementById('inp-note').value, createdBy:state.currentUser.id }; try { await fetch(state.apiUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(formData)}); if(isEdit){ const idx=state.transactions.findIndex(t=>t.id==formData.id); if(idx!==-1){ formData.createdBy=state.transactions[idx].createdBy; formData.isPaid=state.transactions[idx].isPaid; state.transactions[idx]=formData; } } else { formData.isPaid='FALSE'; state.transactions.unshift(formData); } updateUI(); cancelEdit(); if(!isEdit && formData.type==='expense'){ openVoucher(formData); showToast('儲存成功！請列印'); } else { showToast('操作成功'); } } catch(e){ showToast('失敗','error'); } finally { btn.disabled=false; } };
-        async function togglePayment(id) { const t=state.transactions.find(x=>String(x.id)===String(id)); if(!t)return; const newStatus=(String(t.isPaid).toUpperCase()==='TRUE')?'FALSE':'TRUE'; t.isPaid=newStatus; updateUI(); try{ await fetch(state.apiUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'togglePayment',id:id})}); }catch(e){} }
-        function updateUI() { if(!state.currentUser)return; const user=state.currentUser; const isAdmin=user.role==='admin'; const isTreasurer=user.role==='treasurer'||isAdmin; const inc=state.transactions.filter(t=>t.type==='income').reduce((a,c)=>a+(+c.amount||0),0); const exp=state.transactions.filter(t=>t.type==='expense').reduce((a,c)=>a+(+c.amount||0),0); document.getElementById('total-income').innerText='$'+inc.toLocaleString(); document.getElementById('total-expense').innerText='$'+exp.toLocaleString(); const pStats=document.getElementById('project-stats'); pStats.innerHTML=''; const pList=document.getElementById('projects-list-content'); pList.innerHTML=''; state.projects.forEach(p=>{ const used=state.transactions.filter(t=>String(t.projectId)===String(p.id)&&t.type==='expense').reduce((a,c)=>a+(+c.amount||0),0); const pct=Math.min(Math.round(used/(p.budget||1)*100)||0,100); pStats.innerHTML+=`<div class="mb-3"><div class="flex justify-between text-sm mb-1"><span>${p.name}</span><span class="text-slate-500">$${used.toLocaleString()} / ${(p.budget||0).toLocaleString()}</span></div><div class="bg-slate-100 rounded-full h-2"><div class="h-2 rounded-full ${pct>90?'bg-rose-500':pct>70?'bg-amber-400':'bg-teal-500'}" style="width:${pct}%"></div></div></div>`; pList.innerHTML+=`<div class="border border-slate-200 rounded-lg p-3 flex justify-between items-center"><div><div class="font-bold text-slate-700">${p.name}</div><div class="text-xs text-slate-500">${p.funder||''}</div></div><div class="text-right"><div class="font-mono font-bold text-teal-700">$${(p.budget||0).toLocaleString()}</div></div></div>`; }); const pSelect=document.getElementById('inp-project'); const savedP=pSelect.value; pSelect.innerHTML=state.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join(''); if(savedP)pSelect.value=savedP; updateCategories(); const tbody=document.getElementById('list-body'); tbody.innerHTML=state.transactions.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t=>{ const projName=state.projects.find(p=>String(p.id)===String(t.projectId))?.name||'(未知)'; const tString=JSON.stringify(t).replace(/'/g,"&#39;"); const isPaid=String(t.isPaid).toUpperCase()==='TRUE'; const isLocked=isPaid; const canModify=!isLocked&&(isAdmin||String(t.createdBy)===String(user.id)); const canPay=isTreasurer; const safeDate=(t.date||'').split('T')[0]; return `<tr class="hover:bg-slate-50 group"><td class="px-4 py-3 align-top"><div class="font-mono text-slate-500 text-xs">${safeDate}</div><div class="text-xs text-slate-400 truncate max-w-[100px]">${projName}</div><div class="text-sm font-medium text-slate-800">${t.summary}</div></td><td class="px-4 py-3 text-right align-top"><div class="font-mono font-bold ${t.type==='income'?'text-emerald-600':'text-rose-600'}">${t.type==='income'?'+':'-'}${Number(t.amount).toLocaleString()}</div><div class="flex justify-end mt-1">${canPay?`<button onclick="togglePayment('${t.id}')" class="text-[10px] px-2 py-0.5 rounded-full border cursor-pointer ${isPaid?'bg-emerald-100 text-emerald-700 border-emerald-200':'bg-slate-100 text-slate-400 border-slate-200'}">${isPaid?'已匯款':'未匯款'}</button>`:`<span class="text-[10px] px-2 py-0.5 rounded-full border ${isPaid?'bg-emerald-50 text-emerald-600 border-emerald-100':'bg-slate-50 text-slate-300 border-slate-100'}">${isPaid?'已匯款':'未匯款'}</span>`}</div></td><td class="px-4 py-3 text-center align-top"><div class="flex justify-center space-x-1">${(t.type==='expense')?`<button onclick='openVoucher(${tString})' class="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded"><i data-lucide="printer" class="w-4 h-4"></i></button>`:''}${isLocked?`<span class="p-1.5 text-slate-300"><i data-lucide="lock" class="w-4 h-4"></i></span>`:(canModify?`<button onclick='startEdit(${JSON.stringify(tString)})' class="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded"><i data-lucide="edit-3" class="w-4 h-4"></i></button><button onclick="deleteItem('${t.id}')" class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`:'')}</div></td></tr>`; }).join(''); lucide.createIcons(); }
+        // --- Data Operations (Fixed with Error Handling) ---
+        
+        document.getElementById('entry-form').onsubmit = async (e) => { 
+            e.preventDefault(); 
+            if(!state.apiUrl) return showToast('請先連線','error'); 
+            
+            const isEdit=document.getElementById('inp-id').value!==""; 
+            const btn=document.getElementById('btn-submit'); 
+            btn.disabled=true; 
+            
+            const formData={ 
+                action: isEdit?'edit':'add', 
+                id: isEdit?document.getElementById('inp-id').value:Date.now().toString(), 
+                date:document.getElementById('inp-date').value, 
+                type:document.getElementById('inp-type').value, 
+                projectId:document.getElementById('inp-project').value, 
+                category:document.getElementById('inp-category').value, 
+                summary:document.getElementById('inp-summary').value, 
+                amount:document.getElementById('inp-amount').value, 
+                payee:document.getElementById('inp-payee').value, 
+                note:document.getElementById('inp-note').value, 
+                createdBy:state.currentUser.id 
+            }; 
+            
+            try { 
+                showLoading(true);
+                // 使用新的 apiCall，確保伺服器回應成功
+                await apiCall(formData);
+                
+                if(isEdit){ 
+                    const idx=state.transactions.findIndex(t=>t.id==formData.id); 
+                    if(idx!==-1){ 
+                        formData.createdBy=state.transactions[idx].createdBy; 
+                        formData.isPaid=state.transactions[idx].isPaid; 
+                        state.transactions[idx]=formData; 
+                    } 
+                } else { 
+                    formData.isPaid='FALSE'; 
+                    state.transactions.unshift(formData); 
+                } 
+                
+                updateUI(); 
+                cancelEdit(); 
+                if(!isEdit && formData.type==='expense'){ 
+                    openVoucher(formData); 
+                    showToast('儲存成功！可下載 PDF'); 
+                } else { 
+                    showToast('儲存成功'); 
+                } 
+            } catch(err){ 
+                showToast('儲存失敗：' + err.message, 'error'); 
+                console.error(err);
+            } finally { 
+                btn.disabled=false; 
+                showLoading(false);
+            } 
+        };
+
+        async function togglePayment(id) { 
+            const t=state.transactions.find(x=>String(x.id)===String(id)); 
+            if(!t)return; 
+            
+            const oldStatus = t.isPaid;
+            const newStatus = (String(t.isPaid).toUpperCase()==='TRUE')?'FALSE':'TRUE'; 
+            
+            // 樂觀更新 (先改畫面)
+            t.isPaid = newStatus; 
+            updateUI(); 
+            
+            try{ 
+                // 呼叫 API
+                await apiCall({action:'togglePayment', id:id});
+                showToast(newStatus==='TRUE'?'已標記匯款':'已取消匯款');
+            } catch(err){
+                // 失敗時回滾
+                t.isPaid = oldStatus;
+                updateUI();
+                showToast('更新失敗，請檢查網路', 'error');
+            } 
+        }
+
+        async function deleteItem(id) {
+            if(!confirm('確定刪除？此動作無法復原。')) return;
+            
+            const originalList = [...state.transactions];
+            state.transactions = state.transactions.filter(t=>String(t.id)!==String(id));
+            updateUI();
+            
+            try {
+                showLoading(true);
+                await apiCall({action:'delete', id:id});
+                showToast('刪除成功');
+            } catch(err) {
+                // 失敗時回滾
+                state.transactions = originalList;
+                updateUI();
+                showToast('刪除失敗：' + err.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function updateUI() { if(!state.currentUser)return; const user=state.currentUser; const isAdmin=user.role==='admin'; const isTreasurer=user.role==='treasurer'||isAdmin; const inc=state.transactions.filter(t=>t.type==='income').reduce((a,c)=>a+(+c.amount||0),0); const exp=state.transactions.filter(t=>t.type==='expense').reduce((a,c)=>a+(+c.amount||0),0); document.getElementById('total-income').innerText='$'+inc.toLocaleString(); document.getElementById('total-expense').innerText='$'+exp.toLocaleString(); const pStats=document.getElementById('project-stats'); pStats.innerHTML=''; const pList=document.getElementById('projects-list-content'); pList.innerHTML=''; state.projects.forEach(p=>{ const used=state.transactions.filter(t=>String(t.projectId)===String(p.id)&&t.type==='expense').reduce((a,c)=>a+(+c.amount||0),0); const pct=Math.min(Math.round(used/(p.budget||1)*100)||0,100); pStats.innerHTML+=`<div class="mb-3"><div class="flex justify-between text-sm mb-1"><span>${p.name}</span><span class="text-slate-500">$${used.toLocaleString()} / ${(p.budget||0).toLocaleString()}</span></div><div class="bg-slate-100 rounded-full h-2"><div class="h-2 rounded-full ${pct>90?'bg-rose-500':pct>70?'bg-amber-400':'bg-teal-500'}" style="width:${pct}%"></div></div></div>`; pList.innerHTML+=`<div class="border border-slate-200 rounded-lg p-3 flex justify-between items-center"><div><div class="font-bold text-slate-700">${p.name}</div><div class="text-xs text-slate-500">${p.funder||''}</div></div><div class="text-right"><div class="font-mono font-bold text-teal-700">$${(p.budget||0).toLocaleString()}</div></div></div>`; }); const pSelect=document.getElementById('inp-project'); const savedP=pSelect.value; pSelect.innerHTML=state.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join(''); if(savedP)pSelect.value=savedP; updateCategories(); const tbody=document.getElementById('list-body'); tbody.innerHTML=state.transactions.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t=>{ const projName=state.projects.find(p=>String(p.id)===String(t.projectId))?.name||'(未知)'; const tString=JSON.stringify(t).replace(/'/g,"&#39;"); const isPaid=String(t.isPaid).toUpperCase()==='TRUE'; const isLocked=isPaid; const canModify=!isLocked&&(isAdmin||String(t.createdBy)===String(user.id)); const canPay=isTreasurer; const safeDate=(t.date||'').split('T')[0]; return `<tr class="hover:bg-slate-50 group"><td class="px-4 py-3 align-top"><div class="font-mono text-slate-500 text-xs">${safeDate}</div><div class="text-xs text-slate-400 truncate max-w-[100px]">${projName}</div><div class="text-sm font-medium text-slate-800">${t.summary}</div></td><td class="px-4 py-3 text-right align-top"><div class="font-mono font-bold ${t.type==='income'?'text-emerald-600':'text-rose-600'}">${t.type==='income'?'+':'-'}${Number(t.amount).toLocaleString()}</div><div class="flex justify-end mt-1">${canPay?`<button onclick="togglePayment('${t.id}')" class="text-[10px] px-2 py-0.5 rounded-full border cursor-pointer ${isPaid?'bg-emerald-100 text-emerald-700 border-emerald-200':'bg-slate-100 text-slate-400 border-slate-200'} transition-colors hover:bg-emerald-200">${isPaid?'已匯款':'未匯款'}</button>`:`<span class="text-[10px] px-2 py-0.5 rounded-full border ${isPaid?'bg-emerald-50 text-emerald-600 border-emerald-100':'bg-slate-50 text-slate-300 border-slate-100'}">${isPaid?'已匯款':'未匯款'}</span>`}</div></td><td class="px-4 py-3 text-center align-top"><div class="flex justify-center space-x-1">${(t.type==='expense')?`<button onclick='openVoucher(${tString})' class="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded"><i data-lucide="printer" class="w-4 h-4"></i></button>`:''}${isLocked?`<span class="p-1.5 text-slate-300"><i data-lucide="lock" class="w-4 h-4"></i></span>`:(canModify?`<button onclick='startEdit(${JSON.stringify(tString)})' class="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded"><i data-lucide="edit-3" class="w-4 h-4"></i></button><button onclick="deleteItem('${t.id}')" class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`:'')}</div></td></tr>`; }).join(''); lucide.createIcons(); }
         function startEdit(tString){const t=JSON.parse(tString);document.getElementById('inp-id').value=t.id;document.getElementById('inp-date').value=(t.date||'').split('T')[0];document.getElementById('inp-amount').value=t.amount;document.getElementById('inp-summary').value=t.summary;document.getElementById('inp-payee').value=t.payee;document.getElementById('inp-note').value=t.note;setType(t.type);setTimeout(()=>{document.getElementById('inp-project').value=t.projectId;document.getElementById('inp-category').value=t.category;},50);document.getElementById('form-title').innerText="修改紀錄";document.getElementById('edit-mode-indicator').classList.remove('hidden');document.getElementById('btn-submit').innerHTML='<i data-lucide="refresh-cw" class="w-5 h-5 mr-2"></i> 確認更新';document.getElementById('btn-submit').className='w-full bg-amber-500 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center';document.getElementById('btn-cancel-edit').classList.remove('hidden');switchTab('entry');}
         function cancelEdit(){document.getElementById('entry-form').reset();document.getElementById('inp-id').value="";document.getElementById('inp-date').value=new Date().toISOString().split('T')[0];document.getElementById('form-title').innerText="新增紀錄";document.getElementById('edit-mode-indicator').classList.add('hidden');document.getElementById('btn-cancel-edit').classList.add('hidden');setType('expense');}
         function updateCategories(){const type=document.getElementById('inp-type').value;const cSelect=document.getElementById('inp-category');const opts=state.categories.filter(c=>c.type===type);cSelect.innerHTML=opts.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');}
@@ -372,12 +525,9 @@
         function showSettingsOnly(){document.getElementById('login-overlay').classList.add('hidden');switchTab('settings');}
         function logout(){state.currentUser=null;document.getElementById('login-id').value='';document.getElementById('login-pwd').value='';document.getElementById('login-msg').classList.add('hidden');document.getElementById('login-overlay').classList.remove('hidden');document.getElementById('navbar').classList.replace('bg-teal-700','bg-slate-700');}
         function switchTab(id){document.querySelectorAll('.view-section').forEach(el=>el.classList.add('hidden'));document.getElementById('view-'+id).classList.remove('hidden');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.replace('text-teal-600','text-slate-400'));const map={'dashboard':0,'entry':1,'list':2,'projects':3};if(map[id]!==undefined&&document.querySelectorAll('.nav-btn')[map[id]])document.querySelectorAll('.nav-btn')[map[id]].classList.replace('text-slate-400','text-teal-600');document.querySelectorAll('.desktop-nav-btn').forEach(b=>{b.classList.remove('text-teal-300','bg-white/10');b.classList.add('text-slate-300','hover:bg-white/10');});if(map[id]!==undefined&&document.querySelectorAll('.desktop-nav-btn')[map[id]]){const b=document.querySelectorAll('.desktop-nav-btn')[map[id]];b.classList.remove('text-slate-300','hover:bg-white/10');b.classList.add('text-teal-300','bg-white/10');}}
-        async function deleteItem(id){if(!confirm('確定刪除？'))return;state.transactions=state.transactions.filter(t=>String(t.id)!==String(id));updateUI();try{await fetch(state.apiUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete',id:id})});}catch(e){}}
         function digitToChinese(n){const digit=['零','壹','貳','參','肆','伍','陸','柒','捌','玖'];const unit=[['元','萬','億'],['','拾','佰','仟']];let num=Math.abs(n);let s='';for(let i=0;i<unit[0].length&&num>0;i++){let p='';for(let j=0;j<unit[1].length&&num>0;j++){p=digit[num%10]+unit[1][j]+p;num=Math.floor(num/10);}s=p.replace(/(零.)*零$/,'').replace(/^$/,'零')+unit[0][i]+s;}return s.replace(/(零.)*零元/,'元').replace(/(零.)+/g,'零').replace(/^整$/,'零元整');}
         function showLoading(show){document.getElementById('loading').classList.toggle('hidden',!show);}
         function showToast(msg,type='success'){const t=document.getElementById('toast');t.innerText=msg;t.className=`fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[300] text-white transition-all duration-300 transform translate-y-0 opacity-100 ${type==='error'?'bg-rose-600':'bg-emerald-600'}`;setTimeout(()=>t.classList.add('translate-y-[-20px]','opacity-0'),3000);}
-        function exportCSV() { const csv = "\uFEFF日期,類型,計畫,科目,摘要,金額,匯款\n" + state.transactions.map(t=>`${(t.date||'').split('T')[0]},${t.type},${state.projects.find(p=>String(p.id)===String(t.projectId))?.name},${t.category},"${t.summary}",${t.amount},${String(t.isPaid).toUpperCase()==='TRUE'?'是':'否'}`).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='onanip_data.csv'; a.click(); }
     </script>
 </body>
 </html>
-
