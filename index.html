@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V14)</title>
+    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V15)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -13,9 +13,9 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 
-        /* --- 🖨️ 列印專用樣式 --- */
+        /* --- 預設列印樣式 (直式) --- */
         @media print {
-            @page { size: A4 portrait; margin: 15mm; }
+            @page { size: A4 portrait; margin: 15mm; } 
             body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             body * { visibility: hidden; height: 0; overflow: hidden; }
             .no-print, nav, #login-overlay, #toast, #loading { display: none !important; }
@@ -31,16 +31,28 @@
             .attachment-area { border: 2px dashed #666 !important; height: 8cm !important; margin: 15px 0 !important; }
         }
 
+        /* --- 橫式列印專用 class --- */
+        @media print {
+            .landscape-mode {
+                /* 嘗試強制橫向，部分瀏覽器支援 */
+                transform: rotate(0deg); 
+            }
+        }
+        /* 透過 JS 動態注入 @page size 樣式來控制橫向 */
+
         /* 螢幕預覽樣式 */
         .preview-table { width: 100%; border-collapse: collapse; border: 1px solid #333; margin-bottom: 20px; }
         .preview-table th, .preview-table td { border: 1px solid #333; padding: 8px; }
         .preview-table th { background-color: #f3f4f6; text-align: center; font-weight: bold; }
         .amount-col { text-align: right; font-family: monospace; }
-        .sign-box { height: 80px; vertical-align: bottom; text-align: center; width: 20%; }
+        .sign-box { height: 80px; vertical-align: bottom; text-align: center; }
         .attachment-area { border: 2px dashed #94a3b8; height: 200px; display: flex; align-items: center; justify-content: center; background-color: #f8fafc; color: #64748b; font-weight: bold; margin: 15px 0; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 pb-24 md:pb-10">
+
+    <!-- 用於動態控制列印方向的 Style -->
+    <style id="print-orientation-style"></style>
 
     <!-- Login -->
     <div id="login-overlay" class="fixed inset-0 bg-slate-800 z-[150] flex items-center justify-center p-4">
@@ -48,7 +60,7 @@
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-500 to-emerald-500"></div>
             <div class="text-center mb-8">
                 <div class="bg-teal-50 p-4 rounded-full inline-block mb-4 ring-4 ring-teal-100"><i data-lucide="shield-check" class="w-10 h-10 text-teal-600"></i></div>
-                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V14</h1>
+                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V15</h1>
             </div>
             <form id="login-form" class="space-y-5">
                 <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">帳號</label><input type="text" id="login-id" class="w-full p-3 border border-slate-300 rounded-lg outline-none" placeholder="user"></div>
@@ -131,7 +143,7 @@
             <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm mb-4">
                 <h3 class="font-bold text-slate-700">收支明細</h3>
                 <button onclick="openReportModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center font-bold text-sm hover:bg-indigo-700 shadow-md">
-                    <i data-lucide="printer" class="w-4 h-4 mr-2"></i> 產出報表 (PDF)
+                    <i data-lucide="printer" class="w-4 h-4 mr-2"></i> 下載報表 (PDF)
                 </button>
             </div>
             <div class="bg-white rounded-xl shadow-sm overflow-hidden min-h-[300px]">
@@ -160,26 +172,26 @@
                 <div><label class="block text-sm font-bold text-slate-600 mb-1">月份</label><input type="month" id="rpt-month" class="w-full p-2 border rounded"></div>
                 <div><label class="block text-sm font-bold text-slate-600 mb-2">報表類型</label>
                     <div class="space-y-2">
-                        <label class="flex items-center p-2 border rounded hover:bg-slate-50"><input type="radio" name="rpt-type" value="journal" checked class="mr-2">日記帳</label>
-                        <label class="flex items-center p-2 border rounded hover:bg-slate-50"><input type="radio" name="rpt-type" value="ledger" class="mr-2">分類帳</label>
-                        <label class="flex items-center p-2 border rounded hover:bg-slate-50"><input type="radio" name="rpt-type" value="monthly" class="mr-2">收支月報表</label>
+                        <label class="flex items-center p-2 border rounded hover:bg-slate-50"><input type="radio" name="rpt-type" value="journal" checked class="mr-2">日記帳 (直式)</label>
+                        <label class="flex items-center p-2 border rounded hover:bg-slate-50"><input type="radio" name="rpt-type" value="ledger" class="mr-2">分類帳 (橫式)</label>
+                        <label class="flex items-center p-2 border rounded hover:bg-slate-50"><input type="radio" name="rpt-type" value="monthly" class="mr-2">收支月報表 (直式)</label>
                     </div>
                 </div>
             </div>
             <div class="mt-6 flex space-x-3">
                 <button onclick="document.getElementById('report-modal').classList.add('hidden')" class="w-1/2 bg-slate-200 text-slate-600 font-bold py-3 rounded-xl">取消</button>
-                <button onclick="generateReport()" class="w-1/2 bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg">列印 / PDF</button>
+                <button onclick="generateReport()" class="w-1/2 bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg">下載 PDF</button>
             </div>
         </div>
     </div>
 
-    <!-- Print Preview Modal (共用) -->
+    <!-- Print Preview Modal -->
     <div id="print-modal" class="fixed inset-0 bg-black/50 z-[250] hidden flex items-center justify-center p-4 print:p-0 print:bg-white print:block">
         <div id="printable-area" class="bg-white w-full max-w-5xl p-8 rounded-lg shadow-2xl overflow-y-auto max-h-[90vh] print:max-h-none print:shadow-none print:w-full">
             <div id="print-content"></div>
             <div class="mt-8 flex justify-end space-x-4 no-print">
                 <button onclick="document.getElementById('print-modal').classList.add('hidden')" class="px-6 py-2 border rounded-lg font-bold">關閉</button>
-                <button onclick="window.print()" class="px-6 py-2 bg-teal-600 text-white rounded-lg font-bold flex items-center"><i data-lucide="printer" class="w-5 h-5 mr-2"></i> 列印 / 存為PDF</button>
+                <button onclick="window.print()" class="px-6 py-2 bg-teal-600 text-white rounded-lg font-bold flex items-center"><i data-lucide="download" class="w-5 h-5 mr-2"></i> 下載 PDF</button>
             </div>
         </div>
     </div>
@@ -204,6 +216,16 @@
             if (savedUrl) { state.apiUrl = savedUrl; document.getElementById('api-url-input').value = savedUrl; fetchData(false); }
             else { document.getElementById('login-overlay').classList.add('hidden'); switchTab('settings'); }
         };
+
+        // --- 設定列印方向 ---
+        function setPrintOrientation(isLandscape) {
+            const style = document.getElementById('print-orientation-style');
+            if (isLandscape) {
+                style.innerHTML = `@media print { @page { size: A4 landscape; margin: 15mm; } }`;
+            } else {
+                style.innerHTML = `@media print { @page { size: A4 portrait; margin: 15mm; } }`;
+            }
+        }
 
         async function fetchData() {
             showLoading(true);
@@ -240,8 +262,11 @@
             const projId = document.getElementById('rpt-project').value;
             const monthStr = document.getElementById('rpt-month').value;
             const type = document.querySelector('input[name="rpt-type"]:checked').value;
+            
+            // 設定方向
+            setPrintOrientation(type === 'ledger');
+
             let filtered = state.transactions.filter(t => {
-                // 前端再次清洗日期，確保只取前10碼 (YYYY-MM-DD)
                 const safeDate = (t.date || '').split('T')[0];
                 return ((projId==='ALL') || (String(t.projectId)===String(projId))) && (!monthStr || safeDate.startsWith(monthStr));
             });
@@ -277,8 +302,21 @@
                 html += `<div style="display:flex;gap:20px;"><div style="flex:1"><table class="preview-table"><thead><tr><th colspan="2" style="text-align:center;background:#dcfce7">收入</th></tr></thead><tbody>${Object.entries(iMap).map(([k,v])=>`<tr><td>${k}</td><td class="amount-col">${v.toLocaleString()}</td></tr>`).join('')}<tr style="font-weight:bold"><td>合計</td><td class="amount-col">${tI.toLocaleString()}</td></tr></tbody></table></div><div style="flex:1"><table class="preview-table"><thead><tr><th colspan="2" style="text-align:center;background:#fee2e2">支出</th></tr></thead><tbody>${Object.entries(eMap).map(([k,v])=>`<tr><td>${k}</td><td class="amount-col">${v.toLocaleString()}</td></tr>`).join('')}<tr style="font-weight:bold"><td>合計</td><td class="amount-col">${tE.toLocaleString()}</td></tr></tbody></table></div></div><div class="text-center font-bold text-xl mt-4 border p-4 bg-slate-50">本期結餘：$${(tI-tE).toLocaleString()}</div>`;
             }
 
-            // 修正核章欄位
-            html += `<table class="sign-table"><tr><th>理事長</th><th>總幹事</th><th>會計</th><th>出納</th><th>經辦人</th></tr><tr><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td></tr></table>`;
+            // 報表核章：出納、會計、總幹事、理事長
+            html += `<table class="sign-table" style="width:100%; border-collapse:collapse; margin-top:30px;">
+                <tr>
+                    <th style="width:25%; border:1px solid #000; padding:5px; text-align:center;">理事長</th>
+                    <th style="width:25%; border:1px solid #000; padding:5px; text-align:center;">總幹事</th>
+                    <th style="width:25%; border:1px solid #000; padding:5px; text-align:center;">會計</th>
+                    <th style="width:25%; border:1px solid #000; padding:5px; text-align:center;">出納</th>
+                </tr>
+                <tr>
+                    <td style="height:80px; border:1px solid #000;"></td>
+                    <td style="height:80px; border:1px solid #000;"></td>
+                    <td style="height:80px; border:1px solid #000;"></td>
+                    <td style="height:80px; border:1px solid #000;"></td>
+                </tr>
+            </table>`;
             document.getElementById('print-content').innerHTML = html;
             document.getElementById('report-modal').classList.add('hidden');
             document.getElementById('print-modal').classList.remove('hidden');
@@ -286,6 +324,7 @@
 
         // Voucher
         function openVoucher(transaction) {
+            setPrintOrientation(false); // 單據固定直式
             const proj = state.projects.find(p => String(p.id) === String(transaction.projectId)) || {name: '未知計畫', id: 'N/A'};
             const safeDate = (transaction.date || '').split('T')[0];
             const content = `
@@ -299,7 +338,24 @@
                 </table>
                 <div class="attachment-area">憑 證 黏 貼 處</div>
                 <div class="text-xs mb-1">合計新台幣：<span class="text-base ml-2">${digitToChinese(transaction.amount)}</span></div>
-                <table class="preview-table text-center"><tr><th class="w-1/5">理事長</th><th class="w-1/5">總幹事</th><th class="w-1/5">會計</th><th class="w-1/5">驗收</th><th class="w-1/5">經辦人</th></tr><tr><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td><td class="sign-box"></td></tr></table>
+                
+                <!-- 單據核章：經辦人、驗收證明、會計、總幹事、理事長 -->
+                <table class="preview-table text-center" style="width:100%; border-collapse:collapse;">
+                    <tr>
+                        <th style="width:20%; border:1px solid #000;">理事長</th>
+                        <th style="width:20%; border:1px solid #000;">總幹事</th>
+                        <th style="width:20%; border:1px solid #000;">會計</th>
+                        <th style="width:20%; border:1px solid #000;">驗收證明</th>
+                        <th style="width:20%; border:1px solid #000;">經辦人</th>
+                    </tr>
+                    <tr>
+                        <td style="height:80px; border:1px solid #000;"></td>
+                        <td style="height:80px; border:1px solid #000;"></td>
+                        <td style="height:80px; border:1px solid #000;"></td>
+                        <td style="height:80px; border:1px solid #000;"></td>
+                        <td style="height:80px; border:1px solid #000;"></td>
+                    </tr>
+                </table>
             `;
             document.getElementById('print-content').innerHTML = content;
             document.getElementById('print-modal').classList.remove('hidden');
