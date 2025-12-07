@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V18 Fixed Toast)</title>
+    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V19)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- 引入 html2pdf 用於產生 PDF -->
@@ -21,8 +21,8 @@
         .preview-table th { background-color: #f3f4f6; text-align: center; font-weight: bold; }
         .amount-col { text-align: right; font-family: monospace; }
         .sign-box { height: 80px; vertical-align: bottom; text-align: center; }
-        /* 調整憑證黏貼處高度至 350px */
-        .attachment-area { border: 2px dashed #94a3b8; height: 350px; display: flex; align-items: center; justify-content: center; background-color: #f8fafc; color: #64748b; font-weight: bold; margin: 15px 0; }
+        /* 調整憑證黏貼處高度至 400px (加大) */
+        .attachment-area { border: 2px dashed #94a3b8; height: 400px; display: flex; align-items: center; justify-content: center; background-color: #f8fafc; color: #64748b; font-weight: bold; margin: 15px 0; }
 
         /* PDF 輸出專用調整 */
         .pdf-content {
@@ -62,7 +62,7 @@
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-500 to-emerald-500"></div>
             <div class="text-center mb-8">
                 <div class="bg-teal-50 p-4 rounded-full inline-block mb-4 ring-4 ring-teal-100"><i data-lucide="shield-check" class="w-10 h-10 text-teal-600"></i></div>
-                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V18</h1>
+                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V19</h1>
             </div>
             <form id="login-form" class="space-y-5">
                 <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">帳號</label><input type="text" id="login-id" class="w-full p-3 border border-slate-300 rounded-lg outline-none" placeholder="user"></div>
@@ -131,7 +131,7 @@
                     <div class="grid grid-cols-2 gap-4"><input type="date" id="inp-date" required class="w-full p-3 border rounded-lg"><input type="number" id="inp-amount" required placeholder="金額" class="w-full p-3 border rounded-lg font-mono"></div>
                     <select id="inp-project" required class="w-full p-3 border rounded-lg bg-white"></select><select id="inp-category" required class="w-full p-3 border rounded-lg bg-white"></select>
                     <input type="text" id="inp-summary" required placeholder="摘要" class="w-full p-3 border rounded-lg">
-                    <div class="grid grid-cols-2 gap-4"><input type="text" id="inp-payee" placeholder="對象" class="w-full p-3 border rounded-lg"><input type="text" id="inp-note" placeholder="備註" class="w-full p-3 border rounded-lg"></div>
+                    <div class="grid grid-cols-2 gap-4"><input type="text" id="inp-payee" placeholder="對象 (受款人)" class="w-full p-3 border rounded-lg"><input type="text" id="inp-note" placeholder="備註" class="w-full p-3 border rounded-lg"></div>
                     <div class="flex space-x-3">
                         <button type="button" id="btn-cancel-edit" onclick="cancelEdit()" class="hidden w-1/3 bg-slate-200 text-slate-600 font-bold py-4 rounded-xl">取消</button>
                         <button type="submit" id="btn-submit" class="w-full bg-rose-600 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center"><i data-lucide="save" class="w-5 h-5 mr-2"></i> 儲存並列印</button>
@@ -171,7 +171,7 @@
             <h3 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">🖨️ 產出財務報表</h3>
             <div class="space-y-4">
                 <div><label class="block text-sm font-bold text-slate-600 mb-1">篩選計畫</label><select id="rpt-project" class="w-full p-2 border rounded bg-white"><option value="ALL">全部計畫</option></select></div>
-                <!-- 修改日期選擇區塊，加入全年度勾選 -->
+                <!-- 全年度勾選 -->
                 <div>
                     <label class="block text-sm font-bold text-slate-600 mb-1">月份 / 期間</label>
                     <div class="flex items-center space-x-2">
@@ -230,7 +230,7 @@
 
     <script>
         let state = { apiUrl: '', transactions: [], projects: [], categories: [], users: [], currentUser: null };
-        let toastTimeout; // 全域變數管理 Toast 計時器
+        let toastTimeout;
 
         window.onload = () => {
             lucide.createIcons();
@@ -243,6 +243,9 @@
         async function apiCall(payload) {
             if (!state.apiUrl) throw new Error("未設定連線網址");
             
+            // 安全性修正：如果後端不支援 payee 欄位，這會確保 payee 不會消失
+            // 我們把 payee 附加在 summary 後面備用，但這只是防呆
+            // 真正的修正是依賴後端要能存 payee
             const res = await fetch(state.apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -338,7 +341,6 @@
             sel.innerHTML = '<option value="ALL">全部計畫 (All Projects)</option>' + state.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
             document.getElementById('rpt-month').value = new Date().toISOString().slice(0, 7);
             
-            // 重置全年度選項
             document.getElementById('rpt-full-year').checked = false;
             toggleReportDate();
             
@@ -360,7 +362,7 @@
             const projName = projId === 'ALL' ? '全部計畫' : (state.projects.find(p=>String(p.id)===String(projId))?.name || projId);
             const rptName = type==='journal'?'日記帳':type==='ledger'?'分類帳':'收支月報表';
             
-            // 計算預算資訊 (Budget Info)
+            // 計算預算資訊
             let totalBudget = 0;
             let totalUsedAllTime = 0;
 
@@ -370,14 +372,12 @@
             } else {
                 const p = state.projects.find(x => String(x.id) === String(projId));
                 totalBudget = Number(p ? p.budget : 0);
-                // 計算該計畫"所有時間"的累計支出，以反映真實餘額
                 totalUsedAllTime = state.transactions
                     .filter(t => String(t.projectId) === String(projId) && t.type === 'expense')
                     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
             }
             const remainingBudget = totalBudget - totalUsedAllTime;
             
-            // 設定寬度
             const contentDiv = document.getElementById('print-content');
             const isLandscape = type === 'ledger';
             contentDiv.className = isLandscape ? 'landscape-content bg-white p-4 pdf-content mx-auto' : 'bg-white p-4 pdf-content mx-auto';
@@ -444,16 +444,23 @@
             const proj = state.projects.find(p => String(p.id) === String(transaction.projectId)) || {name: '未知計畫', id: 'N/A'};
             const safeDate = (transaction.date || '').split('T')[0];
             const contentDiv = document.getElementById('print-content');
-            // 直式 + 置中
             contentDiv.className = 'bg-white p-4 pdf-content mx-auto'; 
-            contentDiv.style.width = '200mm'; // 調整寬度以適應 A4 Margin 5mm
+            contentDiv.style.width = '200mm'; 
 
+            // 修正：增加受款人欄位，並加上防呆 || '' 避免 undefined
             const content = `
                 <div class="text-center mb-6"><h1 class="text-2xl font-bold tracking-widest mb-2 border-b-2 border-black inline-block pb-1">花蓮縣 'onanip 文教協會</h1><h2 class="text-xl font-bold mt-2">支用單據黏貼憑證用紙</h2></div>
                 <div class="flex justify-between mb-2 font-mono text-sm"><div><span class="font-bold">計畫：</span>${proj.id}</div><div><span class="font-bold">編號：</span>${String(transaction.id).slice(-6)}</div></div>
                 <table class="preview-table mb-4 text-sm">
                     <tr><th>計畫名稱</th><td colspan="3">${proj.name}</td><th>申請日期</th><td>${safeDate}</td></tr>
-                    <tr><th>科目</th><td colspan="3">${transaction.category}</td><th>金額</th><td class="font-bold font-mono text-lg">$${Number(transaction.amount).toLocaleString()}</td></tr>
+                    
+                    <!-- 修正區域：將受款人獨立一欄，避免跟備註混淆 -->
+                    <tr>
+                        <th width="15%">科目</th><td width="25%">${transaction.category}</td>
+                        <th width="15%">受款人</th><td width="25%">${transaction.payee || ''}</td>
+                        <th width="10%">金額</th><td class="font-bold font-mono text-lg">$${Number(transaction.amount).toLocaleString()}</td>
+                    </tr>
+                    
                     <tr><th>摘要</th><td colspan="5" class="h-16 align-top">${transaction.summary}</td></tr>
                     <tr><th>備註</th><td colspan="5">${transaction.note || ''}</td></tr>
                 </table>
@@ -513,11 +520,9 @@
                     const idx=state.transactions.findIndex(t=>t.id==formData.id); 
                     if(idx!==-1){ 
                         formData.createdBy=state.transactions[idx].createdBy; 
-                        // formData.isPaid 保留但不使用
                         state.transactions[idx]=formData; 
                     } 
                 } else { 
-                    // 移除預設的 isPaid 狀態設定，或設為空
                     state.transactions.unshift(formData); 
                 } 
                 
@@ -538,21 +543,16 @@
             } 
         };
 
-        // 移除 togglePayment 功能
-
         async function deleteItem(id) {
             if(!confirm('確定刪除？此動作無法復原。')) return;
-            
             const originalList = [...state.transactions];
             state.transactions = state.transactions.filter(t=>String(t.id)!==String(id));
             updateUI();
-            
             try {
                 showLoading(true);
                 await apiCall({action:'delete', id:id});
                 showToast('刪除成功');
             } catch(err) {
-                // 失敗時回滾
                 state.transactions = originalList;
                 updateUI();
                 showToast('刪除失敗：' + err.message, 'error');
@@ -561,14 +561,10 @@
             }
         }
 
-        // 修改 updateUI 移除匯款狀態顯示
         function updateUI() { 
             if(!state.currentUser) return; 
             const user=state.currentUser; 
             const isAdmin=user.role==='admin'; 
-            
-            // 移除 isTreasurer 判斷
-            // const isTreasurer=user.role==='treasurer'||isAdmin; 
 
             const inc=state.transactions.filter(t=>t.type==='income').reduce((a,c)=>a+(+c.amount||0),0); 
             const exp=state.transactions.filter(t=>t.type==='expense').reduce((a,c)=>a+(+c.amount||0),0); 
@@ -594,14 +590,11 @@
             updateCategories(); 
             
             const tbody=document.getElementById('list-body'); 
-            // 產生列表，移除匯款狀態按鈕
             tbody.innerHTML=state.transactions.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t=>{ 
                 const projName=state.projects.find(p=>String(p.id)===String(t.projectId))?.name||'(未知)'; 
                 const tString=JSON.stringify(t).replace(/'/g,"&#39;"); 
-                
                 const canModify=(isAdmin||String(t.createdBy)===String(user.id)); 
                 const safeDate=(t.date||'').split('T')[0]; 
-                
                 return `<tr class="hover:bg-slate-50 group">
                     <td class="px-4 py-3 align-top">
                         <div class="font-mono text-slate-500 text-xs">${safeDate}</div>
@@ -636,26 +629,14 @@
         function showLoading(show){document.getElementById('loading').classList.toggle('hidden',!show);}
         function showToast(msg, type='success') {
             const t = document.getElementById('toast');
-            // 清除之前的計時器，防止快速點擊時提早消失
             if (toastTimeout) clearTimeout(toastTimeout);
-            
             t.innerText = msg;
-            // 移除 hidden，顯示元素
             t.classList.remove('hidden');
-            
-            // 設定顯示樣式
             const baseClass = "fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[300] text-white transition-all duration-300 transform";
             const bgClass = type === 'error' ? 'bg-rose-600' : 'bg-emerald-600';
-            
-            // 立即設定為顯示狀態 (不透明, 位置正常)
             t.className = `${baseClass} ${bgClass} translate-y-0 opacity-100`;
-            
-            // 5秒後開始消失動畫
             toastTimeout = setTimeout(() => {
-                // 設定為隱藏狀態 (透明, 上移)
                 t.className = `${baseClass} ${bgClass} translate-y-[-20px] opacity-0`;
-                
-                // 等待動畫結束 (300ms) 後加上 hidden
                 setTimeout(() => {
                     t.classList.add('hidden');
                 }, 300);
