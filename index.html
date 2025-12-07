@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V24 Permissions)</title>
+    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V26 AutoPad)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- 引入 html2pdf 用於產生 PDF -->
@@ -62,7 +62,7 @@
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-500 to-emerald-500"></div>
             <div class="text-center mb-8">
                 <div class="bg-teal-50 p-4 rounded-full inline-block mb-4 ring-4 ring-teal-100"><i data-lucide="shield-check" class="w-10 h-10 text-teal-600"></i></div>
-                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V24</h1>
+                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V26</h1>
             </div>
             <form id="login-form" class="space-y-5">
                 <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">帳號</label><input type="text" id="login-id" class="w-full p-3 border border-slate-300 rounded-lg outline-none" placeholder="user"></div>
@@ -93,7 +93,7 @@
             </div>
             <div class="flex items-center space-x-2">
                 <button onclick="switchTab('settings')" class="p-2 hover:bg-white/10 rounded-full border border-white/20"><i data-lucide="settings" class="w-5 h-5"></i></button>
-                <button onclick="logout()" class="p-2 hover:bg-rose-600 rounded-full border border-white/20"><i data-lucide="log-out" class="w-5 h-5"></i></button>
+                <button onclick="logout()" class="p-2 hover:bg-rose-600 rounded-full border border-white/20" title="登出並清除連線"><i data-lucide="log-out" class="w-5 h-5"></i></button>
             </div>
         </div>
     </nav>
@@ -134,7 +134,8 @@
                     <!-- 修改區域：對象與匯款帳號並排 -->
                     <div class="grid grid-cols-2 gap-4">
                         <input type="text" id="inp-payee" placeholder="對象 (受款人)" class="w-full p-3 border rounded-lg">
-                        <input type="text" id="inp-bank-account" placeholder="匯款帳號 (14碼)" maxlength="14" class="w-full p-3 border rounded-lg">
+                        <!-- V26 修正：加入 onblur 事件自動補零 -->
+                        <input type="text" id="inp-bank-account" placeholder="匯款帳號 (14碼)" maxlength="14" class="w-full p-3 border rounded-lg" onblur="autoPadAccount(this)">
                     </div>
                     <!-- 備註獨立一行 -->
                     <input type="text" id="inp-note" placeholder="備註" class="w-full p-3 border rounded-lg">
@@ -246,6 +247,15 @@
             if (savedUrl) { state.apiUrl = savedUrl; document.getElementById('api-url-input').value = savedUrl; fetchData(false); }
             else { document.getElementById('login-overlay').classList.add('hidden'); switchTab('settings'); }
         };
+
+        // --- V26 New Helper: Auto Pad Bank Account ---
+        function autoPadAccount(el) {
+            let val = el.value.trim();
+            // 只有當裡面有數字且長度大於0但小於14時才補0
+            if (val.length > 0 && val.length < 14 && /^\d+$/.test(val)) {
+                el.value = val.padStart(14, '0');
+            }
+        }
 
         async function apiCall(payload) {
             if (!state.apiUrl) throw new Error("未設定連線網址");
@@ -517,6 +527,12 @@
             const btn=document.getElementById('btn-submit'); 
             btn.disabled=true; 
             
+            // 強制檢查並補零
+            let rawBankAcc = document.getElementById('inp-bank-account').value.trim();
+            if(rawBankAcc && rawBankAcc.length > 0 && rawBankAcc.length < 14 && /^\d+$/.test(rawBankAcc)) {
+                rawBankAcc = rawBankAcc.padStart(14, '0');
+            }
+
             const formData={ 
                 action: isEdit?'edit':'add', 
                 id: isEdit?document.getElementById('inp-id').value:Date.now().toString(), 
@@ -527,7 +543,7 @@
                 summary:document.getElementById('inp-summary').value, 
                 amount:document.getElementById('inp-amount').value, 
                 payee:document.getElementById('inp-payee').value, 
-                bankAccount:document.getElementById('inp-bank-account').value, // 新增匯款帳號
+                bankAccount: rawBankAcc, // 使用補零後的帳號
                 note:document.getElementById('inp-note').value, 
                 createdBy:state.currentUser.id 
             }; 
@@ -805,7 +821,31 @@
         function setType(t){document.getElementById('inp-type').value=t;const btnE=document.getElementById('btn-expense');const btnI=document.getElementById('btn-income');const btnS=document.getElementById('btn-submit');if(t==='expense'){btnE.className='flex-1 py-3 rounded-md text-sm font-bold bg-white text-rose-600 shadow-sm transition-all';btnI.className='flex-1 py-3 rounded-md text-sm font-bold text-slate-500 transition-all';btnS.innerHTML='<i data-lucide="save" class="w-5 h-5 mr-2"></i> 儲存並列印';btnS.className='w-full bg-rose-600 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center';}else{btnI.className='flex-1 py-3 rounded-md text-sm font-bold bg-white text-emerald-600 shadow-sm transition-all';btnE.className='flex-1 py-3 rounded-md text-sm font-bold text-slate-500 transition-all';btnS.innerHTML='<i data-lucide="save" class="w-5 h-5 mr-2"></i> 儲存';btnS.className='w-full bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center';}updateCategories();}
         function saveAndConnect(){const url=document.getElementById('api-url-input').value.trim();if(!url)return showToast('請輸入網址','error');localStorage.setItem('onanip_url',url);state.apiUrl=url;fetchData();}
         function showSettingsOnly(){document.getElementById('login-overlay').classList.add('hidden');switchTab('settings');}
-        function logout(){state.currentUser=null;document.getElementById('login-id').value='';document.getElementById('login-pwd').value='';document.getElementById('login-msg').classList.add('hidden');document.getElementById('login-overlay').classList.remove('hidden');document.getElementById('navbar').classList.replace('bg-teal-700','bg-slate-700');}
+        function logout(){
+            if(!confirm('確定要登出？\n為了資訊安全，登出後將會清除連線設定。')) return;
+            
+            // 清除使用者狀態
+            state.currentUser = null;
+            
+            // 清除連線設定
+            localStorage.removeItem('onanip_url');
+            state.apiUrl = '';
+            
+            // 重置表單
+            document.getElementById('login-id').value = '';
+            document.getElementById('login-pwd').value = '';
+            document.getElementById('login-msg').classList.add('hidden');
+            document.getElementById('api-url-input').value = '';
+            
+            // UI 切換回設定頁面 (因為沒有連線網址了，無法顯示登入框)
+            document.getElementById('login-overlay').classList.add('hidden');
+            switchTab('settings');
+            
+            document.getElementById('navbar').classList.replace('bg-teal-700','bg-slate-700');
+            document.getElementById('user-display').innerText = '未登入';
+            
+            showToast('已登出並清除連線設定');
+        }
         function switchTab(id){document.querySelectorAll('.view-section').forEach(el=>el.classList.add('hidden'));document.getElementById('view-'+id).classList.remove('hidden');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.replace('text-teal-600','text-slate-400'));const map={'dashboard':0,'entry':1,'list':2,'projects':3};if(map[id]!==undefined&&document.querySelectorAll('.nav-btn')[map[id]])document.querySelectorAll('.nav-btn')[map[id]].classList.replace('text-slate-400','text-teal-600');document.querySelectorAll('.desktop-nav-btn').forEach(b=>{b.classList.remove('text-teal-300','bg-white/10');b.classList.add('text-slate-300','hover:bg-white/10');});if(map[id]!==undefined&&document.querySelectorAll('.desktop-nav-btn')[map[id]]){const b=document.querySelectorAll('.desktop-nav-btn')[map[id]];b.classList.remove('text-slate-300','hover:bg-white/10');b.classList.add('text-teal-300','bg-white/10');}}
         function digitToChinese(n){const digit=['零','壹','貳','參','肆','伍','陸','柒','捌','玖'];const unit=[['元','萬','億'],['','拾','佰','仟']];let num=Math.abs(n);let s='';for(let i=0;i<unit[0].length&&num>0;i++){let p='';for(let j=0;j<unit[1].length&&num>0;j++){p=digit[num%10]+unit[1][j]+p;num=Math.floor(num/10);}s=p.replace(/(零.)*零$/,'').replace(/^$/,'零')+unit[0][i]+s;}return s.replace(/(零.)*零元/,'元').replace(/(零.)+/g,'零').replace(/^整$/,'零元整');}
         function showLoading(show){document.getElementById('loading').classList.toggle('hidden',!show);}
