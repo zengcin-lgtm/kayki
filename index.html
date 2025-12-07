@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V21 PadZero)</title>
+    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V23 Roles Fixed)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- 引入 html2pdf 用於產生 PDF -->
@@ -62,7 +62,7 @@
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-500 to-emerald-500"></div>
             <div class="text-center mb-8">
                 <div class="bg-teal-50 p-4 rounded-full inline-block mb-4 ring-4 ring-teal-100"><i data-lucide="shield-check" class="w-10 h-10 text-teal-600"></i></div>
-                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V21</h1>
+                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V23</h1>
             </div>
             <form id="login-form" class="space-y-5">
                 <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">帳號</label><input type="text" id="login-id" class="w-full p-3 border border-slate-300 rounded-lg outline-none" placeholder="user"></div>
@@ -157,7 +157,7 @@
             </div>
             <div class="bg-white rounded-xl shadow-sm overflow-hidden min-h-[300px]">
                 <table class="w-full text-sm text-left">
-                    <thead class="bg-slate-50 text-slate-500 font-semibold border-b"><tr><th class="px-4 py-3">內容</th><th class="px-4 py-3 text-right">金額</th><th class="px-4 py-3 text-center w-[120px]">操作</th></tr></thead>
+                    <thead class="bg-slate-50 text-slate-500 font-semibold border-b"><tr><th class="px-4 py-3">內容</th><th class="px-4 py-3 text-right">金額 / 狀態</th><th class="px-4 py-3 text-center w-[120px]">操作</th></tr></thead>
                     <tbody id="list-body" class="divide-y divide-slate-100"></tbody>
                 </table>
             </div>
@@ -445,7 +445,10 @@
             document.getElementById('print-modal').classList.remove('hidden');
         }
 
-        function openVoucher(transaction) {
+        function openVoucher(id) {
+            const transaction = state.transactions.find(t => String(t.id) === String(id));
+            if (!transaction) return showToast('找不到該筆資料', 'error');
+
             const proj = state.projects.find(p => String(p.id) === String(transaction.projectId)) || {name: '未知計畫', id: 'N/A'};
             const safeDate = (transaction.date || '').split('T')[0];
             const contentDiv = document.getElementById('print-content');
@@ -536,17 +539,23 @@
                 if(isEdit){ 
                     const idx=state.transactions.findIndex(t=>t.id==formData.id); 
                     if(idx!==-1){ 
+                        // 保留原有的核准狀態，避免編輯後狀態遺失
+                        formData.accountantApproved = state.transactions[idx].accountantApproved;
+                        formData.isPaid = state.transactions[idx].isPaid;
                         formData.createdBy=state.transactions[idx].createdBy; 
                         state.transactions[idx]=formData; 
                     } 
                 } else { 
+                    // 新增時預設為未核准、未付款
+                    formData.accountantApproved = 'FALSE';
+                    formData.isPaid = 'FALSE';
                     state.transactions.unshift(formData); 
                 } 
                 
                 updateUI(); 
                 cancelEdit(); 
                 if(!isEdit && formData.type==='expense'){ 
-                    openVoucher(formData); 
+                    openVoucher(formData.id); 
                     showToast('儲存成功！可下載 PDF'); 
                 } else { 
                     showToast('儲存成功'); 
@@ -559,6 +568,48 @@
                 showLoading(false);
             } 
         };
+
+        async function approveItem(id) {
+            if(!confirm('確定核准此款項？核准後將無法修改。')) return;
+            // 樂觀更新
+            const t = state.transactions.find(x => String(x.id) === String(id));
+            if(t) {
+                t.accountantApproved = 'TRUE';
+                updateUI();
+            }
+            try {
+                showLoading(true);
+                await apiCall({action: 'approve', id: id});
+                showToast('已核准');
+            } catch(err) {
+                if(t) t.accountantApproved = 'FALSE'; // 回滾
+                updateUI();
+                showToast('核准失敗: ' + err.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function payItem(id) {
+            if(!confirm('確認已完成匯款？')) return;
+            // 樂觀更新
+            const t = state.transactions.find(x => String(x.id) === String(id));
+            if(t) {
+                t.isPaid = 'TRUE';
+                updateUI();
+            }
+            try {
+                showLoading(true);
+                await apiCall({action: 'pay', id: id});
+                showToast('匯款狀態已更新');
+            } catch(err) {
+                if(t) t.isPaid = 'FALSE'; // 回滾
+                updateUI();
+                showToast('更新失敗: ' + err.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
 
         async function deleteItem(id) {
             if(!confirm('確定刪除？此動作無法復原。')) return;
@@ -581,7 +632,10 @@
         function updateUI() { 
             if(!state.currentUser) return; 
             const user=state.currentUser; 
-            const isAdmin=user.role==='admin'; 
+            const role = user.role;
+            const isAdmin = role === 'admin'; 
+            const isAccountant = role === 'accountant' || isAdmin;
+            const isTreasurer = role === 'treasurer' || isAdmin;
 
             const inc=state.transactions.filter(t=>t.type==='income').reduce((a,c)=>a+(+c.amount||0),0); 
             const exp=state.transactions.filter(t=>t.type==='expense').reduce((a,c)=>a+(+c.amount||0),0); 
@@ -609,12 +663,62 @@
             const tbody=document.getElementById('list-body'); 
             tbody.innerHTML=state.transactions.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t=>{ 
                 const projName=state.projects.find(p=>String(p.id)===String(t.projectId))?.name||'(未知)'; 
-                const tString=JSON.stringify(t).replace(/'/g,"&#39;"); 
-                const canModify=(isAdmin||String(t.createdBy)===String(user.id)); 
                 const safeDate=(t.date||'').split('T')[0]; 
+                
+                // 狀態判斷
+                const isApproved = String(t.accountantApproved).toUpperCase() === 'TRUE';
+                const isPaid = String(t.isPaid).toUpperCase() === 'TRUE';
+                
+                // 權限判斷
+                // 只有未核准且未付款的才能被修改/刪除
+                // 作者本人或 Admin 可以改
+                const isLocked = isApproved || isPaid;
+                const canModify = !isLocked && (isAdmin || String(t.createdBy) === String(user.id));
+                
+                // 按鈕顯示邏輯
+                let actionBtns = '';
+                let statusBadge = '';
+
+                // 狀態標籤
+                if (t.type === 'expense') {
+                    if (isPaid) {
+                        statusBadge = `<span class="bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-full font-bold">匯款完成</span>`;
+                    } else if (isApproved) {
+                        statusBadge = `<span class="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-bold">待匯款</span>`;
+                    } else {
+                        statusBadge = `<span class="bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-full font-bold">待核准</span>`;
+                    }
+                }
+
+                // 1. PDF 下載按鈕 (支出才有)
+                if (t.type === 'expense') {
+                    actionBtns += `<button onclick="openVoucher('${t.id}')" class="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded" title="列印單據"><i data-lucide="printer" class="w-4 h-4"></i></button>`;
+                }
+
+                // 2. 修改/刪除按鈕 (未鎖定才能操作)
+                if (canModify) {
+                    actionBtns += `<button onclick="startEdit('${t.id}')" class="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded" title="修改"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                                   <button onclick="deleteItem('${t.id}')" class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded" title="刪除"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`;
+                } else if (isLocked) {
+                    actionBtns += `<span class="p-1.5 text-slate-300" title="已鎖定"><i data-lucide="lock" class="w-4 h-4"></i></span>`;
+                }
+
+                // 3. 會計核准按鈕 (會計權限 + 未核准 + 支出類別)
+                if (isAccountant && !isApproved && t.type === 'expense') {
+                    actionBtns += `<button onclick="approveItem('${t.id}')" class="ml-1 px-2 py-1 bg-indigo-50 text-indigo-600 text-xs rounded border border-indigo-200 hover:bg-indigo-100 font-bold">核准</button>`;
+                }
+
+                // 4. 出納匯款按鈕 (出納權限 + 已核准 + 未付款 + 支出類別)
+                if (isTreasurer && isApproved && !isPaid && t.type === 'expense') {
+                    actionBtns += `<button onclick="payItem('${t.id}')" class="ml-1 px-2 py-1 bg-emerald-50 text-emerald-600 text-xs rounded border border-emerald-200 hover:bg-emerald-100 font-bold">匯款</button>`;
+                }
+
                 return `<tr class="hover:bg-slate-50 group">
                     <td class="px-4 py-3 align-top">
-                        <div class="font-mono text-slate-500 text-xs">${safeDate}</div>
+                        <div class="flex items-center space-x-2 mb-1">
+                            <span class="font-mono text-slate-500 text-xs">${safeDate}</span>
+                            ${statusBadge}
+                        </div>
                         <div class="text-xs text-slate-400 truncate max-w-[100px]">${projName}</div>
                         <div class="text-sm font-medium text-slate-800">${t.summary}</div>
                     </td>
@@ -624,9 +728,8 @@
                         </div>
                     </td>
                     <td class="px-4 py-3 text-center align-top">
-                        <div class="flex justify-center space-x-1">
-                            ${(t.type==='expense')?`<button onclick='openVoucher(${tString})' class="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded"><i data-lucide="printer" class="w-4 h-4"></i></button>`:''}
-                            ${canModify?`<button onclick='startEdit(${JSON.stringify(tString)})' class="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded"><i data-lucide="edit-3" class="w-4 h-4"></i></button><button onclick="deleteItem('${t.id}')" class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`:'<span class="p-1.5 text-slate-300"><i data-lucide="lock" class="w-4 h-4"></i></span>'}
+                        <div class="flex justify-center items-center space-x-1 flex-wrap gap-y-1">
+                            ${actionBtns}
                         </div>
                     </td>
                 </tr>`; 
@@ -634,8 +737,10 @@
             lucide.createIcons(); 
         }
 
-        function startEdit(tString){
-            const t=JSON.parse(tString);
+        function startEdit(id){
+            const t = state.transactions.find(t => String(t.id) === String(id));
+            if (!t) return showToast('找不到該筆資料', 'error');
+
             document.getElementById('inp-id').value=t.id;
             document.getElementById('inp-date').value=(t.date||'').split('T')[0];
             document.getElementById('inp-amount').value=t.amount;
