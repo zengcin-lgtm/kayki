@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V29 Pagination)</title>
+    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V30 Sort Fix)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- 引入 html2pdf 用於產生 PDF -->
@@ -62,7 +62,7 @@
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-500 to-emerald-500"></div>
             <div class="text-center mb-8">
                 <div class="bg-teal-50 p-4 rounded-full inline-block mb-4 ring-4 ring-teal-100"><i data-lucide="shield-check" class="w-10 h-10 text-teal-600"></i></div>
-                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V29</h1>
+                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V30</h1>
             </div>
             <form id="login-form" class="space-y-5">
                 <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">帳號</label><input type="text" id="login-id" class="w-full p-3 border border-slate-300 rounded-lg outline-none" placeholder="user"></div>
@@ -691,7 +691,9 @@
         function updateUI() { 
             if(!state.currentUser) return; 
             const user=state.currentUser; 
-            const role = user.role;
+            // V30: Normalize role to lowercase to handle 'Accountant' vs 'accountant'
+            const role = (user.role || '').toLowerCase().trim(); 
+            
             const isAdmin = role === 'admin'; 
             const isAccountant = role === 'accountant' || isAdmin;
             const isTreasurer = role === 'treasurer' || isAdmin;
@@ -731,9 +733,15 @@
             if(savedP)pSelect.value=savedP; 
             updateCategories(); 
             
-            // --- 分頁邏輯 ---
-            // 1. 確保已排序 (最新在前)
-            const sortedTransactions = state.transactions.sort((a,b)=>new Date(b.date)-new Date(a.date));
+            // --- 分頁與排序邏輯 (V30 修正) ---
+            // 1. 嚴格排序：先比日期(DESC)，日期相同比ID(DESC)確保最新在最前
+            const sortedTransactions = state.transactions.sort((a,b) => {
+                const dA = new Date(a.date).getTime() || 0;
+                const dB = new Date(b.date).getTime() || 0;
+                if (dB !== dA) return dB - dA; 
+                // Tie-breaker: ID descending
+                return (Number(b.id) || 0) - (Number(a.id) || 0);
+            });
             
             // 2. 計算分頁
             const totalPages = Math.ceil(sortedTransactions.length / state.itemsPerPage);
