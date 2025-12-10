@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V30 Sort Fix)</title>
+    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V33 Google Login)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- 引入 html2pdf 用於產生 PDF -->
@@ -62,15 +62,19 @@
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-500 to-emerald-500"></div>
             <div class="text-center mb-8">
                 <div class="bg-teal-50 p-4 rounded-full inline-block mb-4 ring-4 ring-teal-100"><i data-lucide="shield-check" class="w-10 h-10 text-teal-600"></i></div>
-                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V30</h1>
+                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V33</h1>
+                <p class="text-xs text-slate-400 mt-2">使用 Google 帳號安全登入</p>
             </div>
-            <form id="login-form" class="space-y-5">
-                <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">帳號</label><input type="text" id="login-id" class="w-full p-3 border border-slate-300 rounded-lg outline-none" placeholder="user"></div>
-                <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">密碼</label><input type="password" id="login-pwd" class="w-full p-3 border border-slate-300 rounded-lg outline-none" placeholder="••••"></div>
-                <button type="submit" id="btn-login" class="w-full bg-slate-800 text-white font-bold py-3 rounded-xl hover:bg-slate-700 transition-all flex justify-center items-center shadow-lg">登入系統</button>
-            </form>
+            
+            <!-- Google Login Button -->
+            <div class="space-y-5">
+                <button id="btn-google-login" onclick="window.firebaseLogin()" class="w-full bg-white border border-slate-300 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition-all flex justify-center items-center shadow-sm gap-3">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6" alt="Google">
+                    使用 Google 帳號登入
+                </button>
+            </div>
+
             <div id="login-msg" class="mt-4 text-center text-rose-500 text-sm font-bold hidden bg-rose-50 p-2 rounded"></div>
-            <div class="mt-6 pt-6 border-t text-center"><button onclick="showSettingsOnly()" class="text-slate-400 text-xs hover:text-teal-600">設定連線</button></div>
         </div>
     </div>
 
@@ -93,7 +97,7 @@
             </div>
             <div class="flex items-center space-x-2">
                 <button onclick="switchTab('settings')" class="p-2 hover:bg-white/10 rounded-full border border-white/20"><i data-lucide="settings" class="w-5 h-5"></i></button>
-                <button onclick="logout()" class="p-2 hover:bg-rose-600 rounded-full border border-white/20" title="登出並清除連線"><i data-lucide="log-out" class="w-5 h-5"></i></button>
+                <button onclick="handleLogout()" class="p-2 hover:bg-rose-600 rounded-full border border-white/20" title="登出並清除連線"><i data-lucide="log-out" class="w-5 h-5"></i></button>
             </div>
         </div>
     </nav>
@@ -103,6 +107,7 @@
         <div id="view-settings" class="view-section hidden fade-in">
             <div class="bg-white rounded-2xl shadow-md p-6 border border-slate-100 max-w-xl mx-auto mt-6">
                 <h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center"><i data-lucide="link" class="w-6 h-6 mr-2 text-teal-600"></i> 連線設定</h2>
+                <p class="text-sm text-slate-500 mb-4">請輸入 Google Apps Script 網址以連接資料庫</p>
                 <input type="text" id="api-url-input" placeholder="GAS URL" class="w-full p-3 border border-slate-300 rounded-lg mb-4">
                 <button onclick="saveAndConnect()" class="w-full bg-teal-600 text-white font-bold py-3 rounded-lg">儲存並連線</button>
             </div>
@@ -134,10 +139,8 @@
                     <!-- 修改區域：對象與匯款帳號並排 -->
                     <div class="grid grid-cols-2 gap-4">
                         <input type="text" id="inp-payee" placeholder="對象 (受款人)" class="w-full p-3 border rounded-lg">
-                        <!-- V26 修正：加入 onblur 事件自動補零 -->
                         <input type="text" id="inp-bank-account" placeholder="匯款帳號 (14碼)" maxlength="14" class="w-full p-3 border rounded-lg" onblur="autoPadAccount(this)">
                     </div>
-                    <!-- 備註獨立一行 -->
                     <input type="text" id="inp-note" placeholder="備註" class="w-full p-3 border rounded-lg">
                     
                     <div class="flex space-x-3">
@@ -217,14 +220,12 @@
 
     <!-- Print Preview Modal -->
     <div id="print-modal" class="fixed inset-0 bg-black/50 z-[250] hidden flex items-center justify-center p-4">
-        <!-- 增加 max-w-none 與 overflow-x-auto 讓手機也能完整檢視 -->
         <div class="bg-white w-full max-w-3xl p-4 rounded-lg shadow-2xl max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center mb-4 border-b pb-2">
                 <h3 class="font-bold text-lg text-slate-700">預覽與下載</h3>
                 <button onclick="document.getElementById('print-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
             
-            <!-- 預覽區域 -->
             <div id="printable-area" class="flex-1 overflow-y-auto overflow-x-auto bg-slate-50 p-4 border rounded">
                 <div id="print-content" class="bg-white p-4 shadow-sm mx-auto"></div>
             </div>
@@ -246,8 +247,99 @@
         <button onclick="switchTab('projects')" class="nav-btn text-slate-400 flex flex-col items-center p-2 w-full"><i data-lucide="list" class="w-6 h-6"></i><span class="text-[10px]">計畫</span></button>
     </div>
 
+    <!-- Firebase Integration Module -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+        // 🔴 請在這裡貼上您的 Firebase 設定 (從 Firebase 控制台 -> 專案設定 -> 一般 -> 您的應用程式 下方複製)
+        // 範例格式：
+const firebaseConfig = {
+  apiKey: "AIzaSyAS-zev6s404Osu7v2H93Z2IpXAUqkKn6A",
+  authDomain: "docs-89031.firebaseapp.com",
+  projectId: "docs-89031",
+  storageBucket: "docs-89031.firebasestorage.app",
+  messagingSenderId: "321571628998",
+  appId: "1:321571628998:web:e4be3b3fba9aafa1a234c7",
+  measurementId: "G-YSNN9LDVNF"
+};
+        
+        // 若您尚未取得設定，請先到 Firebase Console 建立專案並複製設定碼。
+        // 為避免錯誤，這裡使用環境變數作為預設值（僅在預覽環境有效），您下載後必須替換。
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            // 在這裡填入您的設定，如果上面變數無效
+        };
+
+        let app, auth;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+        } catch (e) {
+            console.error("Firebase 初始化失敗，請檢查設定碼。", e);
+        }
+
+        window.firebaseUser = null;
+        const provider = new GoogleAuthProvider();
+
+        window.firebaseLogin = async () => {
+            if (!auth) return alert("Firebase 未正確設定");
+            try {
+                showLoading(true);
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                showLoading(false);
+                console.error(error);
+                let msg = "登入失敗: " + error.message;
+                document.getElementById('login-msg').innerText = msg;
+                document.getElementById('login-msg').classList.remove('hidden');
+            }
+        };
+
+        window.handleLogout = async () => {
+            if(!confirm('確定要登出？\n為了資訊安全，登出後將會清除連線設定。')) return;
+            try {
+                showLoading(true);
+                await signOut(auth);
+            } catch (error) {
+                console.error(error);
+                showLoading(false);
+            }
+        };
+
+        if (auth) {
+            onAuthStateChanged(auth, (user) => {
+                window.firebaseUser = user;
+                if (user) {
+                    document.getElementById('login-overlay').classList.add('hidden');
+                    const savedUrl = localStorage.getItem('onanip_url');
+                    if (savedUrl) {
+                        state.apiUrl = savedUrl;
+                        fetchData(); 
+                    } else {
+                        switchTab('settings');
+                        showLoading(false);
+                    }
+                } else {
+                    state.currentUser = null;
+                    localStorage.removeItem('onanip_url'); 
+                    state.apiUrl = '';
+                    
+                    document.getElementById('login-msg').classList.add('hidden');
+                    document.getElementById('api-url-input').value = '';
+                    
+                    document.getElementById('login-overlay').classList.remove('hidden');
+                    document.getElementById('navbar').classList.replace('bg-teal-700','bg-slate-700');
+                    document.getElementById('user-display').innerText = '未登入';
+                    
+                    switchTab('dashboard'); 
+                    showLoading(false);
+                }
+            });
+        }
+    </script>
+
+    <!-- Main Application Logic -->
     <script>
-        // V29: 新增分頁狀態
         let state = { 
             apiUrl: '', 
             transactions: [], 
@@ -262,20 +354,13 @@
 
         window.onload = () => {
             lucide.createIcons();
-            // 2. 修正日期預設為電腦當地日期
             const now = new Date();
             const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
             document.getElementById('inp-date').value = dateStr;
-            
-            const savedUrl = localStorage.getItem('onanip_url');
-            if (savedUrl) { state.apiUrl = savedUrl; document.getElementById('api-url-input').value = savedUrl; fetchData(false); }
-            else { document.getElementById('login-overlay').classList.add('hidden'); switchTab('settings'); }
         };
 
-        // --- V26 New Helper: Auto Pad Bank Account ---
         function autoPadAccount(el) {
             let val = el.value.trim();
-            // 只有當裡面有數字且長度大於0但小於14時才補0
             if (val.length > 0 && val.length < 14 && /^\d+$/.test(val)) {
                 el.value = val.padStart(14, '0');
             }
@@ -283,14 +368,11 @@
 
         async function apiCall(payload) {
             if (!state.apiUrl) throw new Error("未設定連線網址");
-            
-            // 安全性修正：如果後端不支援 payee 欄位，這會確保 payee 不會消失
             const res = await fetch(state.apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
             });
-            
             if (!res.ok) throw new Error(`Server Error: ${res.status}`);
             const data = await res.json();
             if (data.status === 'error') throw new Error(data.message || '操作失敗');
@@ -309,49 +391,45 @@
                 state.categories = data.categories || []; 
                 state.users = data.users || [];
                 
-                document.getElementById('login-overlay').classList.remove('hidden'); 
-                showToast('已連線');
+                if (window.firebaseUser) {
+                    const email = window.firebaseUser.email;
+                    const userRecord = state.users.find(u => u.id.toLowerCase() === email.toLowerCase());
+                    
+                    if (userRecord) {
+                        state.currentUser = userRecord;
+                        showToast(`歡迎回來 ${userRecord.name}`);
+                        document.getElementById('user-display').innerText = `${userRecord.name} (${userRecord.role})`;
+                        document.getElementById('navbar').classList.replace('bg-slate-700', 'bg-teal-700');
+                        updateUI();
+                        switchTab('dashboard');
+                    } else {
+                        showToast('此 Email 未在系統中建檔', 'error');
+                        state.currentUser = { id: email, name: '訪客', role: 'guest' };
+                        document.getElementById('user-display').innerText = '訪客';
+                        updateUI();
+                        switchTab('dashboard');
+                    }
+                }
             } catch (e) { 
                 console.error(e);
                 showToast('連線失敗: ' + e.message, 'error'); 
-                document.getElementById('login-overlay').classList.add('hidden'); 
                 switchTab('settings'); 
             } finally { 
                 showLoading(false); 
             }
         }
 
-        document.getElementById('login-form').onsubmit = (e) => {
-            e.preventDefault();
-            const id = document.getElementById('login-id').value.trim(); 
-            const pwd = document.getElementById('login-pwd').value.trim();
-            const user = state.users.find(u => String(u.id) === id && String(u.password) === pwd);
-            if (user) {
-                state.currentUser = user; 
-                document.getElementById('login-overlay').classList.add('hidden');
-                updateUI(); switchTab('dashboard'); showToast(`歡迎 ${user.name}`);
-                document.getElementById('user-display').innerText = `${user.name} (${user.role})`;
-                document.getElementById('navbar').classList.replace('bg-slate-700', 'bg-teal-700');
-            } else { 
-                document.getElementById('login-msg').innerText = "帳號或密碼錯誤"; 
-                document.getElementById('login-msg').classList.remove('hidden'); 
-            }
-        };
-
         // --- PDF Generation Logic (Fixed for A4 Margins) ---
         function downloadCurrentPDF() {
             const element = document.getElementById('print-content');
-            // 縮小寬度並設置 margin 以適應 A4
             const isLandscape = document.getElementById('print-content').classList.contains('landscape-content');
-            
             const opt = {
-                margin:       [5, 5, 5, 5], // 0.5cm = 5mm
+                margin:       [5, 5, 5, 5], 
                 filename:     `onanip_report_${new Date().toISOString().slice(0,10)}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' }
             };
-
             showLoading(true);
             html2pdf().set(opt).from(element).save().then(() => {
                 showLoading(false);
@@ -363,26 +441,20 @@
             });
         }
 
-        // Toggle Full Year
         function toggleReportDate() {
             const isFull = document.getElementById('rpt-full-year').checked;
             const mInput = document.getElementById('rpt-month');
             mInput.disabled = isFull;
-            if (isFull) {
-                mInput.classList.add('bg-slate-100', 'text-slate-400');
-            } else {
-                mInput.classList.remove('bg-slate-100', 'text-slate-400');
-            }
+            if (isFull) mInput.classList.add('bg-slate-100', 'text-slate-400');
+            else mInput.classList.remove('bg-slate-100', 'text-slate-400');
         }
 
         function openReportModal() {
             const sel = document.getElementById('rpt-project');
             sel.innerHTML = '<option value="ALL">全部計畫 (All Projects)</option>' + state.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
             document.getElementById('rpt-month').value = new Date().toISOString().slice(0, 7);
-            
             document.getElementById('rpt-full-year').checked = false;
             toggleReportDate();
-            
             document.getElementById('report-modal').classList.remove('hidden');
         }
 
@@ -401,7 +473,6 @@
             const projName = projId === 'ALL' ? '全部計畫' : (state.projects.find(p=>String(p.id)===String(projId))?.name || projId);
             const rptName = type==='journal'?'日記帳':type==='ledger'?'分類帳':'收支月報表';
             
-            // 計算預算資訊
             let totalBudget = 0;
             let totalUsedAllTime = 0;
 
@@ -424,10 +495,8 @@
 
             let html = `<div class="text-center mb-4"><h1 class="text-2xl font-bold border-b-2 border-black inline-block pb-1">花蓮縣 'onanip 文教協會</h1><h2 class="text-xl font-bold mt-2">${rptName}</h2><p class="text-sm mt-1">範圍：${projName} | 期間：${isFullYear ? '全年度' : monthStr}</p></div>`;
 
-            // 在日記帳和分類帳顯示預算統計
             if (type === 'journal' || type === 'ledger') {
-                html += `
-                <div class="budget-info">
+                html += `<div class="budget-info">
                     <div class="budget-item"><div class="budget-label">總預算</div><div class="budget-value text-slate-700">$${totalBudget.toLocaleString()}</div></div>
                     <div class="budget-item"><div class="budget-label">累計支出 (至今日)</div><div class="budget-value text-rose-600">$${totalUsedAllTime.toLocaleString()}</div></div>
                     <div class="budget-item"><div class="budget-label">預算餘額</div><div class="budget-value ${remainingBudget >= 0 ? 'text-emerald-600' : 'text-red-600'}">$${remainingBudget.toLocaleString()}</div></div>
@@ -460,18 +529,8 @@
             }
 
             html += `<table class="sign-table" style="width:100%; border-collapse:collapse; margin-top:30px;">
-                <tr>
-                    <th style="width:25%; border:1px solid #000; padding:5px; text-align:center;">理事長</th>
-                    <th style="width:25%; border:1px solid #000; padding:5px; text-align:center;">總幹事</th>
-                    <th style="width:25%; border:1px solid #000; padding:5px; text-align:center;">會計</th>
-                    <th style="width:25%; border:1px solid #000; padding:5px; text-align:center;">出納</th>
-                </tr>
-                <tr>
-                    <td style="height:80px; border:1px solid #000;"></td>
-                    <td style="height:80px; border:1px solid #000;"></td>
-                    <td style="height:80px; border:1px solid #000;"></td>
-                    <td style="height:80px; border:1px solid #000;"></td>
-                </tr>
+                <tr><th style="width:25%; border:1px solid #000; padding:5px; text-align:center;">理事長</th><th style="width:25%; border:1px solid #000; padding:5px; text-align:center;">總幹事</th><th style="width:25%; border:1px solid #000; padding:5px; text-align:center;">會計</th><th style="width:25%; border:1px solid #000; padding:5px; text-align:center;">出納</th></tr>
+                <tr><td style="height:80px; border:1px solid #000;"></td><td style="height:80px; border:1px solid #000;"></td><td style="height:80px; border:1px solid #000;"></td><td style="height:80px; border:1px solid #000;"></td></tr>
             </table>`;
             
             contentDiv.innerHTML = html;
@@ -489,52 +548,24 @@
             contentDiv.className = 'bg-white p-4 pdf-content mx-auto'; 
             contentDiv.style.width = '200mm'; 
 
-            // 處理匯款帳號補0 (假設固定14碼)
             let bankAcc = String(transaction.bankAccount || '');
-            if (bankAcc.length > 0 && bankAcc.length < 14) {
-                bankAcc = bankAcc.padStart(14, '0');
-            }
+            if (bankAcc.length > 0 && bankAcc.length < 14) bankAcc = bankAcc.padStart(14, '0');
 
-            // 修正：增加受款人欄位，並加上防呆 || '' 避免 undefined
             const content = `
                 <div class="text-center mb-6"><h1 class="text-2xl font-bold tracking-widest mb-2 border-b-2 border-black inline-block pb-1">花蓮縣 'onanip 文教協會</h1><h2 class="text-xl font-bold mt-2">支用單據黏貼憑證用紙</h2></div>
                 <div class="flex justify-between mb-2 font-mono text-sm"><div><span class="font-bold">計畫：</span>${proj.id}</div><div><span class="font-bold">編號：</span>${String(transaction.id).slice(-6)}</div></div>
                 <table class="preview-table mb-4 text-sm">
                     <tr><th>計畫名稱</th><td colspan="3">${proj.name}</td><th>申請日期</th><td>${safeDate}</td></tr>
-                    
-                    <!-- 修正區域：將受款人獨立一欄，避免跟備註混淆 -->
-                    <tr>
-                        <th width="15%">科目</th><td width="25%">${transaction.category}</td>
-                        <th width="15%">受款人</th><td width="25%">${transaction.payee || ''}</td>
-                        <th width="10%">金額</th><td class="font-bold font-mono text-lg">$${Number(transaction.amount).toLocaleString()}</td>
-                    </tr>
-                    
-                    <!-- 新增匯款帳號欄位 -->
-                    <tr>
-                        <th>匯款帳號</th><td colspan="5">${bankAcc}</td>
-                    </tr>
-
+                    <tr><th width="15%">科目</th><td width="25%">${transaction.category}</td><th width="15%">受款人</th><td width="25%">${transaction.payee || ''}</td><th width="10%">金額</th><td class="font-bold font-mono text-lg">$${Number(transaction.amount).toLocaleString()}</td></tr>
+                    <tr><th>匯款帳號</th><td colspan="5">${bankAcc}</td></tr>
                     <tr><th>摘要</th><td colspan="5" class="h-16 align-top">${transaction.summary}</td></tr>
                     <tr><th>備註</th><td colspan="5">${transaction.note || ''}</td></tr>
                 </table>
                 <div class="attachment-area">憑 證 黏 貼 處</div>
                 <div class="text-xs mb-1">合計新台幣：<span class="text-base ml-2">${digitToChinese(transaction.amount)}</span></div>
-                
                 <table class="preview-table text-center" style="width:100%; border-collapse:collapse;">
-                    <tr>
-                        <th style="width:20%; border:1px solid #000;">理事長</th>
-                        <th style="width:20%; border:1px solid #000;">總幹事</th>
-                        <th style="width:20%; border:1px solid #000;">會計</th>
-                        <th style="width:20%; border:1px solid #000;">驗收證明</th>
-                        <th style="width:20%; border:1px solid #000;">經辦人</th>
-                    </tr>
-                    <tr>
-                        <td style="height:80px; border:1px solid #000;"></td>
-                        <td style="height:80px; border:1px solid #000;"></td>
-                        <td style="height:80px; border:1px solid #000;"></td>
-                        <td style="height:80px; border:1px solid #000;"></td>
-                        <td style="height:80px; border:1px solid #000;"></td>
-                    </tr>
+                    <tr><th style="width:20%; border:1px solid #000;">理事長</th><th style="width:20%; border:1px solid #000;">總幹事</th><th style="width:20%; border:1px solid #000;">會計</th><th style="width:20%; border:1px solid #000;">驗收證明</th><th style="width:20%; border:1px solid #000;">經辦人</th></tr>
+                    <tr><td style="height:80px; border:1px solid #000;"></td><td style="height:80px; border:1px solid #000;"></td><td style="height:80px; border:1px solid #000;"></td><td style="height:80px; border:1px solid #000;"></td><td style="height:80px; border:1px solid #000;"></td></tr>
                 </table>
             `;
             contentDiv.innerHTML = content;
@@ -551,7 +582,6 @@
             const btn=document.getElementById('btn-submit'); 
             btn.disabled=true; 
             
-            // 強制檢查並補零
             let rawBankAcc = document.getElementById('inp-bank-account').value.trim();
             if(rawBankAcc && rawBankAcc.length > 0 && rawBankAcc.length < 14 && /^\d+$/.test(rawBankAcc)) {
                 rawBankAcc = rawBankAcc.padStart(14, '0');
@@ -567,33 +597,28 @@
                 summary:document.getElementById('inp-summary').value, 
                 amount:document.getElementById('inp-amount').value, 
                 payee:document.getElementById('inp-payee').value, 
-                bankAccount: rawBankAcc, // 使用補零後的帳號
+                bankAccount: rawBankAcc, 
                 note:document.getElementById('inp-note').value, 
                 createdBy:state.currentUser.id,
-                // V28: 傳遞使用者角色給後端
                 role: state.currentUser.role 
             }; 
             
             try { 
                 showLoading(true);
                 await apiCall(formData);
-                
                 if(isEdit){ 
                     const idx=state.transactions.findIndex(t=>t.id==formData.id); 
                     if(idx!==-1){ 
-                        // 保留原有的核准狀態，避免編輯後狀態遺失
                         formData.accountantApproved = state.transactions[idx].accountantApproved;
                         formData.isPaid = state.transactions[idx].isPaid;
                         formData.createdBy=state.transactions[idx].createdBy; 
                         state.transactions[idx]=formData; 
                     } 
                 } else { 
-                    // 新增時預設為未核准、未付款
                     formData.accountantApproved = 'FALSE';
                     formData.isPaid = 'FALSE';
                     state.transactions.unshift(formData); 
                 } 
-                
                 updateUI(); 
                 cancelEdit(); 
                 if(!isEdit && formData.type==='expense'){ 
@@ -613,44 +638,18 @@
 
         async function approveItem(id) {
             if(!confirm('確定核准此款項？核准後將無法修改。')) return;
-            // 樂觀更新
             const t = state.transactions.find(x => String(x.id) === String(id));
-            if(t) {
-                t.accountantApproved = 'TRUE';
-                updateUI();
-            }
-            try {
-                showLoading(true);
-                await apiCall({action: 'approve', id: id});
-                showToast('已核准');
-            } catch(err) {
-                if(t) t.accountantApproved = 'FALSE'; // 回滾
-                updateUI();
-                showToast('核准失敗: ' + err.message, 'error');
-            } finally {
-                showLoading(false);
-            }
+            if(t) { t.accountantApproved = 'TRUE'; updateUI(); }
+            try { await apiCall({action: 'approve', id: id}); showToast('已核准'); } 
+            catch(err) { if(t) t.accountantApproved = 'FALSE'; updateUI(); showToast('核准失敗: ' + err.message, 'error'); }
         }
 
         async function payItem(id) {
             if(!confirm('確認已完成匯款？')) return;
-            // 樂觀更新
             const t = state.transactions.find(x => String(x.id) === String(id));
-            if(t) {
-                t.isPaid = 'TRUE';
-                updateUI();
-            }
-            try {
-                showLoading(true);
-                await apiCall({action: 'pay', id: id});
-                showToast('匯款狀態已更新');
-            } catch(err) {
-                if(t) t.isPaid = 'FALSE'; // 回滾
-                updateUI();
-                showToast('更新失敗: ' + err.message, 'error');
-            } finally {
-                showLoading(false);
-            }
+            if(t) { t.isPaid = 'TRUE'; updateUI(); }
+            try { await apiCall({action: 'pay', id: id}); showToast('匯款狀態已更新'); } 
+            catch(err) { if(t) t.isPaid = 'FALSE'; updateUI(); showToast('更新失敗: ' + err.message, 'error'); }
         }
 
         async function deleteItem(id) {
@@ -658,56 +657,41 @@
             const originalList = [...state.transactions];
             state.transactions = state.transactions.filter(t=>String(t.id)!==String(id));
             updateUI();
-            try {
-                showLoading(true);
-                // V28: 傳遞使用者角色給後端
-                await apiCall({action:'delete', id:id, role: state.currentUser.role});
-                showToast('刪除成功');
-            } catch(err) {
-                state.transactions = originalList;
-                updateUI();
-                showToast('刪除失敗：' + err.message, 'error');
-            } finally {
-                showLoading(false);
-            }
+            try { await apiCall({action:'delete', id:id, role: state.currentUser.role}); showToast('刪除成功'); } 
+            catch(err) { state.transactions = originalList; updateUI(); showToast('刪除失敗：' + err.message, 'error'); }
         }
 
-        // 分頁功能
         function nextPage() {
             const totalPages = Math.ceil(state.transactions.length / state.itemsPerPage);
-            if (state.currentPage < totalPages) {
-                state.currentPage++;
-                updateUI();
-            }
+            if (state.currentPage < totalPages) { state.currentPage++; updateUI(); }
         }
 
         function prevPage() {
-            if (state.currentPage > 1) {
-                state.currentPage--;
-                updateUI();
-            }
+            if (state.currentPage > 1) { state.currentPage--; updateUI(); }
+        }
+
+        function saveAndConnect(){
+            const url=document.getElementById('api-url-input').value.trim();
+            if(!url)return showToast('請輸入網址','error');
+            localStorage.setItem('onanip_url',url);
+            state.apiUrl=url;
+            fetchData();
         }
 
         function updateUI() { 
             if(!state.currentUser) return; 
             const user=state.currentUser; 
-            // V30: Normalize role to lowercase to handle 'Accountant' vs 'accountant'
             const role = (user.role || '').toLowerCase().trim(); 
-            
             const isAdmin = role === 'admin'; 
             const isAccountant = role === 'accountant' || isAdmin;
             const isTreasurer = role === 'treasurer' || isAdmin;
 
-            // 1. 收入功能權限控管
             const btnIncome = document.getElementById('btn-income');
             if (['admin', 'accountant', 'treasurer'].includes(role)) {
                 btnIncome.classList.remove('hidden');
             } else {
                 btnIncome.classList.add('hidden');
-                // 如果目前選到收入，但沒權限，強制切回支出
-                if (document.getElementById('inp-type').value === 'income') {
-                    setType('expense');
-                }
+                if (document.getElementById('inp-type').value === 'income') setType('expense');
             }
 
             const inc=state.transactions.filter(t=>t.type==='income').reduce((a,c)=>a+(+c.amount||0),0); 
@@ -733,17 +717,13 @@
             if(savedP)pSelect.value=savedP; 
             updateCategories(); 
             
-            // --- 分頁與排序邏輯 (V30 修正) ---
-            // 1. 嚴格排序：先比日期(DESC)，日期相同比ID(DESC)確保最新在最前
             const sortedTransactions = state.transactions.sort((a,b) => {
                 const dA = new Date(a.date).getTime() || 0;
                 const dB = new Date(b.date).getTime() || 0;
                 if (dB !== dA) return dB - dA; 
-                // Tie-breaker: ID descending
                 return (Number(b.id) || 0) - (Number(a.id) || 0);
             });
             
-            // 2. 計算分頁
             const totalPages = Math.ceil(sortedTransactions.length / state.itemsPerPage);
             if (state.currentPage > totalPages && totalPages > 0) state.currentPage = totalPages;
             
@@ -757,194 +737,47 @@
                 const tString=JSON.stringify(t).replace(/'/g,"&#39;"); 
                 const safeDate=(t.date||'').split('T')[0]; 
                 
-                // 狀態判斷
                 const isApproved = String(t.accountantApproved).toUpperCase() === 'TRUE';
                 const isPaid = String(t.isPaid).toUpperCase() === 'TRUE';
                 const isLocked = isApproved || isPaid;
                 
-                // 權限判斷 (V28 修正：Admin 無視鎖定狀態)
                 const canModify = (isAdmin) || (!isLocked && (isAccountant || String(t.createdBy) === String(user.id)));
                 
-                // 4. Treasurer 直接在列表看到匯款資訊
                 let treasurerInfo = '';
                 if ((isTreasurer || isAdmin) && t.type === 'expense') {
-                    // 1. 修正：出納明細匯款帳號補零
                     let acc = String(t.bankAccount || '');
                     if(acc.length > 0 && acc.length < 14 && /^\d+$/.test(acc)) acc = acc.padStart(14, '0');
-                    
-                    treasurerInfo = `<div class="text-xs text-indigo-600 mt-1 font-mono bg-indigo-50 p-1 rounded inline-block">
-                        <span class="font-bold">受款:</span> ${t.payee || '-'} 
-                        <span class="font-bold ml-2">帳號:</span> ${acc || '-'}
-                    </div>`;
+                    treasurerInfo = `<div class="text-xs text-indigo-600 mt-1 font-mono bg-indigo-50 p-1 rounded inline-block"><span class="font-bold">受款:</span> ${t.payee || '-'} <span class="font-bold ml-2">帳號:</span> ${acc || '-'}</div>`;
                 }
 
-                // 按鈕顯示邏輯
                 let actionBtns = '';
                 let statusBadge = '';
 
-                // 狀態標籤
                 if (t.type === 'expense') {
-                    if (isPaid) {
-                        statusBadge = `<span class="bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-full font-bold">匯款完成</span>`;
-                    } else if (isApproved) {
-                        statusBadge = `<span class="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-bold">待匯款</span>`;
-                    } else {
-                        statusBadge = `<span class="bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-full font-bold">待核准</span>`;
-                    }
+                    if (isPaid) statusBadge = `<span class="bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-full font-bold">匯款完成</span>`;
+                    else if (isApproved) statusBadge = `<span class="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-bold">待匯款</span>`;
+                    else statusBadge = `<span class="bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-full font-bold">待核准</span>`;
                 }
 
-                // 1. PDF 下載按鈕 (支出才有)
-                if (t.type === 'expense') {
-                    actionBtns += `<button onclick="openVoucher('${t.id}')" class="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded" title="列印單據"><i data-lucide="printer" class="w-4 h-4"></i></button>`;
-                }
+                if (t.type === 'expense') actionBtns += `<button onclick="openVoucher('${t.id}')" class="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded" title="列印單據"><i data-lucide="printer" class="w-4 h-4"></i></button>`;
 
-                // 2. 修改/刪除按鈕 (未鎖定才能操作)
                 if (canModify) {
-                    actionBtns += `<button onclick="startEdit('${t.id}')" class="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded" title="修改"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                                   <button onclick="deleteItem('${t.id}')" class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded" title="刪除"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`;
-                } else if (!isAdmin && isLocked) { // Admin 不會看到鎖頭
+                    actionBtns += `<button onclick="startEdit('${t.id}')" class="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded" title="修改"><i data-lucide="edit-3" class="w-4 h-4"></i></button><button onclick="deleteItem('${t.id}')" class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded" title="刪除"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`;
+                } else if (!isAdmin && isLocked) {
                     actionBtns += `<span class="p-1.5 text-slate-300" title="已鎖定"><i data-lucide="lock" class="w-4 h-4"></i></span>`;
                 }
 
-                // 3. 會計核准按鈕 (會計權限 + 未核准 + 支出類別)
-                if (isAccountant && !isApproved && t.type === 'expense') {
-                    actionBtns += `<button onclick="approveItem('${t.id}')" class="ml-1 px-2 py-1 bg-indigo-50 text-indigo-600 text-xs rounded border border-indigo-200 hover:bg-indigo-100 font-bold">核准</button>`;
-                }
+                if (isAccountant && !isApproved && t.type === 'expense') actionBtns += `<button onclick="approveItem('${t.id}')" class="ml-1 px-2 py-1 bg-indigo-50 text-indigo-600 text-xs rounded border border-indigo-200 hover:bg-indigo-100 font-bold">核准</button>`;
+                if (isTreasurer && isApproved && !isPaid && t.type === 'expense') actionBtns += `<button onclick="payItem('${t.id}')" class="ml-1 px-2 py-1 bg-emerald-50 text-emerald-600 text-xs rounded border border-emerald-200 hover:bg-emerald-100 font-bold">匯款</button>`;
 
-                // 4. 出納匯款按鈕 (出納權限 + 已核准 + 未付款 + 支出類別)
-                if (isTreasurer && isApproved && !isPaid && t.type === 'expense') {
-                    actionBtns += `<button onclick="payItem('${t.id}')" class="ml-1 px-2 py-1 bg-emerald-50 text-emerald-600 text-xs rounded border border-emerald-200 hover:bg-emerald-100 font-bold">匯款</button>`;
-                }
-
-                return `<tr class="hover:bg-slate-50 group">
-                    <td class="px-4 py-3 align-top">
-                        <div class="flex items-center space-x-2 mb-1">
-                            <!-- 2. 顯示單據編號 -->
-                            <span class="font-mono text-slate-500 text-xs">${safeDate} <span class="text-slate-300">#${String(t.id).slice(-6)}</span></span>
-                            ${statusBadge}
-                        </div>
-                        <div class="text-xs text-slate-400 truncate max-w-[100px]">${projName}</div>
-                        <div class="text-sm font-medium text-slate-800">${t.summary}</div>
-                        ${treasurerInfo}
-                    </td>
-                    <td class="px-4 py-3 text-right align-top">
-                        <div class="font-mono font-bold ${t.type==='income'?'text-emerald-600':'text-rose-600'}">
-                            ${t.type==='income'?'+':'-'}${Number(t.amount).toLocaleString()}
-                        </div>
-                    </td>
-                    <td class="px-4 py-3 text-center align-top">
-                        <div class="flex justify-center items-center space-x-1 flex-wrap gap-y-1">
-                            ${actionBtns}
-                        </div>
-                    </td>
-                </tr>`; 
+                return `<tr class="hover:bg-slate-50 group"><td class="px-4 py-3 align-top"><div class="flex items-center space-x-2 mb-1"><span class="font-mono text-slate-500 text-xs">${safeDate} <span class="text-slate-300">#${String(t.id).slice(-6)}</span></span>${statusBadge}</div><div class="text-xs text-slate-400 truncate max-w-[100px]">${projName}</div><div class="text-sm font-medium text-slate-800">${t.summary}</div>${treasurerInfo}</td><td class="px-4 py-3 text-right align-top"><div class="font-mono font-bold ${t.type==='income'?'text-emerald-600':'text-rose-600'}">${t.type==='income'?'+':'-'}${Number(t.amount).toLocaleString()}</div></td><td class="px-4 py-3 text-center align-top"><div class="flex justify-center items-center space-x-1 flex-wrap gap-y-1">${actionBtns}</div></td></tr>`; 
             }).join(''); 
             
-            // 更新分頁控制項狀態
             document.getElementById('page-info').innerText = `第 ${state.currentPage} / ${totalPages || 1} 頁`;
             document.getElementById('btn-prev-page').disabled = state.currentPage <= 1;
             document.getElementById('btn-next-page').disabled = state.currentPage >= totalPages;
 
             lucide.createIcons(); 
-        }
-
-        function startEdit(id){
-            const t = state.transactions.find(t => String(t.id) === String(id));
-            if (!t) return showToast('找不到該筆資料', 'error');
-
-            document.getElementById('inp-id').value=t.id;
-            document.getElementById('inp-date').value=(t.date||'').split('T')[0];
-            document.getElementById('inp-amount').value=t.amount;
-            document.getElementById('inp-summary').value=t.summary;
-            document.getElementById('inp-payee').value=t.payee;
-            
-            // 處理匯款帳號補0 (假設固定14碼)
-            let bankAcc = String(t.bankAccount || '');
-            if (bankAcc.length > 0 && bankAcc.length < 14) {
-                bankAcc = bankAcc.padStart(14, '0');
-            }
-            document.getElementById('inp-bank-account').value=bankAcc;
-            
-            document.getElementById('inp-note').value=t.note;
-            setType(t.type);
-            setTimeout(()=>{
-                document.getElementById('inp-project').value=t.projectId;
-                document.getElementById('inp-category').value=t.category;
-            },50);
-            document.getElementById('form-title').innerText="修改紀錄";
-            document.getElementById('edit-mode-indicator').classList.remove('hidden');
-            document.getElementById('btn-submit').innerHTML='<i data-lucide="refresh-cw" class="w-5 h-5 mr-2"></i> 確認更新';
-            document.getElementById('btn-submit').className='w-full bg-amber-500 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center';
-            document.getElementById('btn-cancel-edit').classList.remove('hidden');
-            switchTab('entry');
-        }
-
-        function cancelEdit(){
-            document.getElementById('entry-form').reset();
-            document.getElementById('inp-id').value="";
-            // 2. 修正：取消編輯時也重置回今天日期
-            const now = new Date();
-            const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-            document.getElementById('inp-date').value = dateStr;
-            
-            document.getElementById('form-title').innerText="新增紀錄";
-            document.getElementById('edit-mode-indicator').classList.add('hidden');
-            document.getElementById('btn-cancel-edit').classList.add('hidden');
-            setType('expense');
-        }
-        
-        function updateCategories(){const type=document.getElementById('inp-type').value;const cSelect=document.getElementById('inp-category');const opts=state.categories.filter(c=>c.type===type);cSelect.innerHTML=opts.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');}
-        function setType(t){document.getElementById('inp-type').value=t;const btnE=document.getElementById('btn-expense');const btnI=document.getElementById('btn-income');const btnS=document.getElementById('btn-submit');if(t==='expense'){btnE.className='flex-1 py-3 rounded-md text-sm font-bold bg-white text-rose-600 shadow-sm transition-all';btnI.className='flex-1 py-3 rounded-md text-sm font-bold text-slate-500 transition-all';btnS.innerHTML='<i data-lucide="save" class="w-5 h-5 mr-2"></i> 儲存並列印';btnS.className='w-full bg-rose-600 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center';}else{btnI.className='flex-1 py-3 rounded-md text-sm font-bold bg-white text-emerald-600 shadow-sm transition-all';btnE.className='flex-1 py-3 rounded-md text-sm font-bold text-slate-500 transition-all';btnS.innerHTML='<i data-lucide="save" class="w-5 h-5 mr-2"></i> 儲存';btnS.className='w-full bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center';}updateCategories();}
-        function saveAndConnect(){const url=document.getElementById('api-url-input').value.trim();if(!url)return showToast('請輸入網址','error');localStorage.setItem('onanip_url',url);state.apiUrl=url;fetchData();}
-        function showSettingsOnly(){document.getElementById('login-overlay').classList.add('hidden');switchTab('settings');}
-        function logout(){
-            if(!confirm('確定要登出？\n為了資訊安全，登出後將會清除連線設定。')) return;
-            
-            // 清除使用者狀態
-            state.currentUser = null;
-            
-            // 清除連線設定
-            localStorage.removeItem('onanip_url');
-            state.apiUrl = '';
-            
-            // 重置表單
-            document.getElementById('login-id').value = '';
-            document.getElementById('login-pwd').value = '';
-            document.getElementById('login-msg').classList.add('hidden');
-            document.getElementById('api-url-input').value = '';
-            
-            // UI 切換回設定頁面 (因為沒有連線網址了，無法顯示登入框)
-            document.getElementById('login-overlay').classList.add('hidden');
-            switchTab('settings');
-            
-            document.getElementById('navbar').classList.replace('bg-teal-700','bg-slate-700');
-            document.getElementById('user-display').innerText = '未登入';
-            
-            showToast('已登出並清除連線設定');
-        }
-        function switchTab(id){document.querySelectorAll('.view-section').forEach(el=>el.classList.add('hidden'));document.getElementById('view-'+id).classList.remove('hidden');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.replace('text-teal-600','text-slate-400'));const map={'dashboard':0,'entry':1,'list':2,'projects':3};if(map[id]!==undefined&&document.querySelectorAll('.nav-btn')[map[id]])document.querySelectorAll('.nav-btn')[map[id]].classList.replace('text-slate-400','text-teal-600');document.querySelectorAll('.desktop-nav-btn').forEach(b=>{b.classList.remove('text-teal-300','bg-white/10');b.classList.add('text-slate-300','hover:bg-white/10');});if(map[id]!==undefined&&document.querySelectorAll('.desktop-nav-btn')[map[id]]){const b=document.querySelectorAll('.desktop-nav-btn')[map[id]];b.classList.remove('text-slate-300','hover:bg-white/10');b.classList.add('text-teal-300','bg-white/10');}
-        // 重置分頁到第一頁 (UX 優化)
-        if(id === 'list') {
-            state.currentPage = 1;
-            updateUI();
-        }
-        }
-        function digitToChinese(n){const digit=['零','壹','貳','參','肆','伍','陸','柒','捌','玖'];const unit=[['元','萬','億'],['','拾','佰','仟']];let num=Math.abs(n);let s='';for(let i=0;i<unit[0].length&&num>0;i++){let p='';for(let j=0;j<unit[1].length&&num>0;j++){p=digit[num%10]+unit[1][j]+p;num=Math.floor(num/10);}s=p.replace(/(零.)*零$/,'').replace(/^$/,'零')+unit[0][i]+s;}return s.replace(/(零.)*零元/,'元').replace(/(零.)+/g,'零').replace(/^整$/,'零元整');}
-        function showLoading(show){document.getElementById('loading').classList.toggle('hidden',!show);}
-        function showToast(msg, type='success') {
-            const t = document.getElementById('toast');
-            if (toastTimeout) clearTimeout(toastTimeout);
-            t.innerText = msg;
-            t.classList.remove('hidden');
-            const baseClass = "fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[300] text-white transition-all duration-300 transform";
-            const bgClass = type === 'error' ? 'bg-rose-600' : 'bg-emerald-600';
-            t.className = `${baseClass} ${bgClass} translate-y-0 opacity-100`;
-            toastTimeout = setTimeout(() => {
-                t.className = `${baseClass} ${bgClass} translate-y-[-20px] opacity-0`;
-                setTimeout(() => {
-                    t.classList.add('hidden');
-                }, 300);
-            }, 5000);
         }
     </script>
 </body>
