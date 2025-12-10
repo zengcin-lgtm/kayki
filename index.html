@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V33 Google Login)</title>
+    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V33 Google Login Fixed)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- 引入 html2pdf 用於產生 PDF -->
@@ -247,98 +247,7 @@
         <button onclick="switchTab('projects')" class="nav-btn text-slate-400 flex flex-col items-center p-2 w-full"><i data-lucide="list" class="w-6 h-6"></i><span class="text-[10px]">計畫</span></button>
     </div>
 
-    <!-- Firebase Integration Module -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
-
-        // 🔴 請在這裡貼上您的 Firebase 設定 (從 Firebase 控制台 -> 專案設定 -> 一般 -> 您的應用程式 下方複製)
-        // 範例格式：
-const firebaseConfig = {
-  apiKey: "AIzaSyAS-zev6s404Osu7v2H93Z2IpXAUqkKn6A",
-  authDomain: "docs-89031.firebaseapp.com",
-  projectId: "docs-89031",
-  storageBucket: "docs-89031.firebasestorage.app",
-  messagingSenderId: "321571628998",
-  appId: "1:321571628998:web:e4be3b3fba9aafa1a234c7",
-  measurementId: "G-YSNN9LDVNF"
-};
-        
-        // 若您尚未取得設定，請先到 Firebase Console 建立專案並複製設定碼。
-        // 為避免錯誤，這裡使用環境變數作為預設值（僅在預覽環境有效），您下載後必須替換。
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            // 在這裡填入您的設定，如果上面變數無效
-        };
-
-        let app, auth;
-        try {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-        } catch (e) {
-            console.error("Firebase 初始化失敗，請檢查設定碼。", e);
-        }
-
-        window.firebaseUser = null;
-        const provider = new GoogleAuthProvider();
-
-        window.firebaseLogin = async () => {
-            if (!auth) return alert("Firebase 未正確設定");
-            try {
-                showLoading(true);
-                await signInWithPopup(auth, provider);
-            } catch (error) {
-                showLoading(false);
-                console.error(error);
-                let msg = "登入失敗: " + error.message;
-                document.getElementById('login-msg').innerText = msg;
-                document.getElementById('login-msg').classList.remove('hidden');
-            }
-        };
-
-        window.handleLogout = async () => {
-            if(!confirm('確定要登出？\n為了資訊安全，登出後將會清除連線設定。')) return;
-            try {
-                showLoading(true);
-                await signOut(auth);
-            } catch (error) {
-                console.error(error);
-                showLoading(false);
-            }
-        };
-
-        if (auth) {
-            onAuthStateChanged(auth, (user) => {
-                window.firebaseUser = user;
-                if (user) {
-                    document.getElementById('login-overlay').classList.add('hidden');
-                    const savedUrl = localStorage.getItem('onanip_url');
-                    if (savedUrl) {
-                        state.apiUrl = savedUrl;
-                        fetchData(); 
-                    } else {
-                        switchTab('settings');
-                        showLoading(false);
-                    }
-                } else {
-                    state.currentUser = null;
-                    localStorage.removeItem('onanip_url'); 
-                    state.apiUrl = '';
-                    
-                    document.getElementById('login-msg').classList.add('hidden');
-                    document.getElementById('api-url-input').value = '';
-                    
-                    document.getElementById('login-overlay').classList.remove('hidden');
-                    document.getElementById('navbar').classList.replace('bg-teal-700','bg-slate-700');
-                    document.getElementById('user-display').innerText = '未登入';
-                    
-                    switchTab('dashboard'); 
-                    showLoading(false);
-                }
-            });
-        }
-    </script>
-
-    <!-- Main Application Logic -->
+    <!-- Main Application Logic (Moved ABOVE Firebase Module to fix ReferenceError) -->
     <script>
         let state = { 
             apiUrl: '', 
@@ -391,8 +300,10 @@ const firebaseConfig = {
                 state.categories = data.categories || []; 
                 state.users = data.users || [];
                 
+                // Determine User Role based on Firebase Email
                 if (window.firebaseUser) {
                     const email = window.firebaseUser.email;
+                    // Match email with 'id' column in GAS Users sheet
                     const userRecord = state.users.find(u => u.id.toLowerCase() === email.toLowerCase());
                     
                     if (userRecord) {
@@ -403,7 +314,9 @@ const firebaseConfig = {
                         updateUI();
                         switchTab('dashboard');
                     } else {
+                        // Email not found in GAS Users sheet
                         showToast('此 Email 未在系統中建檔', 'error');
+                        // Optional: Create a guest user or force logout
                         state.currentUser = { id: email, name: '訪客', role: 'guest' };
                         document.getElementById('user-display').innerText = '訪客';
                         updateUI();
@@ -413,6 +326,7 @@ const firebaseConfig = {
             } catch (e) { 
                 console.error(e);
                 showToast('連線失敗: ' + e.message, 'error'); 
+                // If fetch fails (e.g. wrong URL), let user fix it
                 switchTab('settings'); 
             } finally { 
                 showLoading(false); 
@@ -778,6 +692,97 @@ const firebaseConfig = {
             document.getElementById('btn-next-page').disabled = state.currentPage >= totalPages;
 
             lucide.createIcons(); 
+        }
+
+        // --- Firebase Module Script ---
+        // (Will be injected below in final file structure if separated, but here I keep logic in one standard script block for simplicity and robustness)
+        // However, to use "import", we need type="module". 
+        // We will keep the main logic here in standard script to define globals, and add the module script below.
+    </script>
+
+    <!-- Firebase Integration Module -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+        // 🔴 請在這裡貼上您的 Firebase 設定 (從 Firebase 控制台 -> 專案設定 -> 一般 -> 您的應用程式 下方複製)
+        const firebaseConfig = {
+  apiKey: "AIzaSyAS-zev6s404Osu7v2H93Z2IpXAUqkKn6A",
+  authDomain: "docs-89031.firebaseapp.com",
+  projectId: "docs-89031",
+  storageBucket: "docs-89031.firebasestorage.app",
+  messagingSenderId: "321571628998",
+  appId: "1:321571628998:web:e4be3b3fba9aafa1a234c7",
+  measurementId: "G-YSNN9LDVNF"
+};
+
+        let app, auth;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+        } catch (e) {
+            console.error("Firebase 初始化失敗，請檢查設定碼。", e);
+        }
+
+        window.firebaseUser = null;
+        const provider = new GoogleAuthProvider();
+
+        window.firebaseLogin = async () => {
+            if (!auth) return alert("Firebase 未正確設定");
+            try {
+                showLoading(true);
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                showLoading(false);
+                console.error(error);
+                let msg = "登入失敗: " + error.message;
+                document.getElementById('login-msg').innerText = msg;
+                document.getElementById('login-msg').classList.remove('hidden');
+            }
+        };
+
+        window.handleLogout = async () => {
+            if(!confirm('確定要登出？\n為了資訊安全，登出後將會清除連線設定。')) return;
+            try {
+                showLoading(true);
+                await signOut(auth);
+            } catch (error) {
+                console.error(error);
+                showLoading(false);
+            }
+        };
+
+        if (auth) {
+            onAuthStateChanged(auth, (user) => {
+                window.firebaseUser = user;
+                if (user) {
+                    document.getElementById('login-overlay').classList.add('hidden');
+                    const savedUrl = localStorage.getItem('onanip_url');
+                    if (savedUrl) {
+                        state.apiUrl = savedUrl;
+                        // Now fetchData is defined because the main script ran first
+                        fetchData(); 
+                    } else {
+                        switchTab('settings');
+                        showLoading(false);
+                    }
+                } else {
+                    state.currentUser = null;
+                    localStorage.removeItem('onanip_url'); 
+                    state.apiUrl = '';
+                    
+                    document.getElementById('login-msg').classList.add('hidden');
+                    document.getElementById('api-url-input').value = '';
+                    
+                    document.getElementById('login-overlay').classList.remove('hidden');
+                    document.getElementById('navbar').classList.replace('bg-teal-700','bg-slate-700');
+                    document.getElementById('user-display').innerText = '未登入';
+                    
+                    // switchTab is defined now
+                    switchTab('dashboard'); 
+                    showLoading(false);
+                }
+            });
         }
     </script>
 </body>
