@@ -513,7 +513,7 @@
             try {
                 await apiCall({ 
                     action: 'updateProjectStatus', 
-                    id: id, 
+                    id: String(id),  // 確保 ID 為字串
                     status: newStatus,
                     role: state.currentUser.role 
                 });
@@ -521,7 +521,13 @@
             } catch(err) {
                 if(p) p.status = oldStatus; 
                 updateUI();
-                showToast('更新失敗: ' + err.message, 'error');
+                
+                // 智慧提示：如果出現這個錯誤，代表後端還是舊版
+                if (err.message.includes('找不到該筆資料 ID')) {
+                     showToast('錯誤：後端尚未更新。請至 GAS 執行 [部署] -> [建立新部署]', 'error');
+                } else {
+                     showToast('更新失敗: ' + err.message, 'error');
+                }
             }
         }
 
@@ -878,13 +884,13 @@
 
         // 🔴 請在這裡貼上您的 Firebase 設定 (從 Firebase 控制台 -> 專案設定 -> 一般 -> 您的應用程式 下方複製)
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-      apiKey: "AIzaSyAS-zev6s404Osu7v2H93Z2IpXAUqkKn6A",
-      authDomain: "docs-89031.firebaseapp.com",
-      projectId: "docs-89031",
-      storageBucket: "docs-89031.firebasestorage.app",
-      messagingSenderId: "321571628998",
-      appId: "1:321571628998:web:e4be3b3fba9aafa1a234c7",
-      measurementId: "G-YSNN9LDVNF"
+  apiKey: "AIzaSyAS-zev6s404Osu7v2H93Z2IpXAUqkKn6A",
+  authDomain: "docs-89031.firebaseapp.com",
+  projectId: "docs-89031",
+  storageBucket: "docs-89031.firebasestorage.app",
+  messagingSenderId: "321571628998",
+  appId: "1:321571628998:web:e4be3b3fba9aafa1a234c7",
+  measurementId: "G-YSNN9LDVNF"
         };
 
         let app, auth;
