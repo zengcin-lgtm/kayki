@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V35 Fixed)</title>
+    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V36 Domain Restricted)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- 引入 html2pdf 用於產生 PDF -->
@@ -68,8 +68,8 @@
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-500 to-emerald-500"></div>
             <div class="text-center mb-8">
                 <div class="bg-teal-50 p-4 rounded-full inline-block mb-4 ring-4 ring-teal-100"><i data-lucide="shield-check" class="w-10 h-10 text-teal-600"></i></div>
-                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V35</h1>
-                <p class="text-xs text-slate-400 mt-2">使用 Google 帳號安全登入</p>
+                <h1 class="text-2xl font-bold text-slate-800">'onanip 會計系統 V36</h1>
+                <p class="text-xs text-slate-400 mt-2">僅限 @onanip.org 網域登入</p>
             </div>
             
             <!-- Google Login Button -->
@@ -102,7 +102,6 @@
                 <button onclick="switchTab('projects')" class="desktop-nav-btn px-4 py-2 rounded-md text-sm font-bold text-slate-300 hover:bg-white/10">計畫</button>
             </div>
             <div class="flex items-center space-x-2">
-                <!-- 設定按鈕已移除，因為網址固定 -->
                 <button onclick="handleLogout()" class="p-2 hover:bg-rose-600 rounded-full border border-white/20" title="登出"><i data-lucide="log-out" class="w-5 h-5"></i></button>
             </div>
         </div>
@@ -134,7 +133,6 @@
                     <div class="grid grid-cols-2 gap-4"><input type="date" id="inp-date" required class="w-full p-3 border rounded-lg"><input type="number" id="inp-amount" required placeholder="金額" class="w-full p-3 border rounded-lg font-mono"></div>
                     <select id="inp-project" required class="w-full p-3 border rounded-lg bg-white"></select><select id="inp-category" required class="w-full p-3 border rounded-lg bg-white"></select>
                     <input type="text" id="inp-summary" required placeholder="摘要" class="w-full p-3 border rounded-lg">
-                    <!-- 修改區域：對象與匯款帳號並排 -->
                     <div class="grid grid-cols-2 gap-4">
                         <input type="text" id="inp-payee" placeholder="對象 (受款人)" class="w-full p-3 border rounded-lg">
                         <input type="text" id="inp-bank-account" placeholder="匯款帳號 (14碼)" maxlength="14" class="w-full p-3 border rounded-lg" onblur="autoPadAccount(this)">
@@ -162,7 +160,6 @@
                     <thead class="bg-slate-50 text-slate-500 font-semibold border-b"><tr><th class="px-4 py-3">內容</th><th class="px-4 py-3 text-right">金額 / 狀態</th><th class="px-4 py-3 text-center w-[120px]">操作</th></tr></thead>
                     <tbody id="list-body" class="divide-y divide-slate-100"></tbody>
                 </table>
-                <!-- 分頁控制項 -->
                 <div id="pagination-controls" class="flex justify-between items-center px-4 py-3 bg-slate-50 border-t border-slate-200">
                     <button onclick="prevPage()" id="btn-prev-page" class="px-3 py-1 bg-white border border-slate-300 rounded text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center text-xs font-bold">
                         <i data-lucide="chevron-left" class="w-4 h-4 mr-1"></i> 上一頁
@@ -190,7 +187,6 @@
             <h3 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">🖨️ 產出財務報表</h3>
             <div class="space-y-4">
                 <div><label class="block text-sm font-bold text-slate-600 mb-1">篩選計畫</label><select id="rpt-project" class="w-full p-2 border rounded bg-white"><option value="ALL">全部計畫</option></select></div>
-                <!-- 全年度勾選 -->
                 <div>
                     <label class="block text-sm font-bold text-slate-600 mb-1">月份 / 期間</label>
                     <div class="flex items-center space-x-2">
@@ -247,7 +243,7 @@
 
     <!-- Main Application Logic (Placed BEFORE Firebase to ensure globals are ready) -->
     <script>
-        // --- Core Functions Definition (Adding missing functions here) ---
+        // --- Core Functions Definition ---
         
         function switchTab(tabId) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
@@ -256,12 +252,10 @@
                 target.classList.remove('hidden');
                 window.scrollTo(0, 0);
             }
-            // Update Mobile Nav
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.classList.remove('text-teal-600');
                 btn.classList.add('text-slate-400');
             });
-            // Update Desktop Nav
             document.querySelectorAll('.desktop-nav-btn').forEach(btn => {
                 btn.classList.remove('text-teal-300', 'bg-white/10');
                 btn.classList.add('text-slate-300');
@@ -278,13 +272,10 @@
             const el = document.getElementById('toast');
             const msgEl = document.getElementById('toast-msg');
             msgEl.innerText = message;
-            
             el.className = 'fixed top-20 right-4 px-6 py-3 rounded-lg shadow-xl z-[300] text-white transition-all duration-300 transform';
             if(type === 'error') el.classList.add('bg-rose-600');
             else el.classList.add('bg-emerald-600');
-            
             el.classList.remove('hidden');
-            
             if(window.toastTimeout) clearTimeout(window.toastTimeout);
             window.toastTimeout = setTimeout(() => {
                 el.classList.add('hidden');
@@ -296,7 +287,6 @@
             const btnInc = document.getElementById('btn-income');
             const btnExp = document.getElementById('btn-expense');
             const title = document.getElementById('form-title');
-            
             if(type === 'income') {
                 btnInc.className = 'flex-1 py-3 rounded-md text-sm font-bold bg-white text-emerald-600 shadow-sm transition-all';
                 btnExp.className = 'flex-1 py-3 rounded-md text-sm font-bold text-slate-500 transition-all';
@@ -314,12 +304,10 @@
         function updateCategories() {
             const type = document.getElementById('inp-type').value;
             const catSelect = document.getElementById('inp-category');
-            
             let cats = state.categories || [];
             if (cats.length > 0 && typeof cats[0] === 'object' && cats[0].type) {
                 cats = cats.filter(c => c.type === type || c.type === 'both' || !c.type);
             }
-            
             catSelect.innerHTML = cats.map(c => {
                 const val = typeof c === 'object' ? c.name : c;
                 return `<option value="${val}">${val}</option>`;
@@ -333,11 +321,9 @@
             document.getElementById('edit-mode-indicator').classList.add('hidden');
             document.getElementById('form-title').innerText = '新增紀錄';
             document.getElementById('btn-submit').innerHTML = '<i data-lucide="save" class="w-5 h-5 mr-2"></i> 儲存並列印';
-            
             const now = new Date();
             const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
             document.getElementById('inp-date').value = dateStr;
-            
             setType('expense');
             lucide.createIcons();
         }
@@ -345,9 +331,7 @@
         function startEdit(id) {
             const t = state.transactions.find(x => String(x.id) === String(id));
             if(!t) return;
-            
             switchTab('entry');
-            
             document.getElementById('inp-id').value = t.id;
             document.getElementById('inp-date').value = (t.date || '').split('T')[0];
             document.getElementById('inp-amount').value = t.amount;
@@ -356,13 +340,10 @@
             document.getElementById('inp-payee').value = t.payee || '';
             document.getElementById('inp-bank-account').value = t.bankAccount || '';
             document.getElementById('inp-note').value = t.note || '';
-            
             setType(t.type); 
-            
             setTimeout(() => {
                 document.getElementById('inp-category').value = t.category;
             }, 0);
-
             document.getElementById('btn-cancel-edit').classList.remove('hidden');
             document.getElementById('edit-mode-indicator').classList.remove('hidden');
             document.getElementById('form-title').innerText = '修改紀錄';
@@ -392,9 +373,7 @@
             return s.replace(/(零.)*零元/, '元').replace(/(零.)+/g, '零').replace(/^整$/, '零元整');
         }
 
-        // --- End Core Functions ---
-
-        // 🟢 1. 固定連線網址
+        // --- Global State ---
         const FIXED_API_URL = "https://script.google.com/macros/s/AKfycbwE8Z-8a3DwDnPBRQh2NbOv3D2SpWUctxyKz11POLewQsv1TGSm4YS3fvBbpX9YplZE/exec";
 
         let state = { 
@@ -408,7 +387,6 @@
             itemsPerPage: 15
         };
         let toastTimeout;
-        
         window.firebaseUser = null;
 
         window.onload = () => {
@@ -426,7 +404,6 @@
         }
 
         async function apiCall(payload) {
-            // 使用固定的 URL
             const res = await fetch(state.apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -462,11 +439,13 @@
                         updateUI();
                         switchTab('dashboard');
                     } else {
-                        showToast('此 Email 未在系統中建檔', 'error');
-                        state.currentUser = { id: email, name: '訪客', role: 'guest' };
-                        document.getElementById('user-display').innerText = '訪客';
+                        // 即便是訪客，也必須通過網域檢查 (因為 onAuthStateChanged 會擋掉)
+                        // 但如果 GAS Users 沒資料，這裡會變成訪客模式
+                        state.currentUser = { id: email, name: '新成員', role: 'guest' };
+                        document.getElementById('user-display').innerText = '新成員';
                         updateUI();
                         switchTab('dashboard');
+                        showToast('您的帳號未在系統名單中，權限受限', 'error');
                     }
                 }
             } catch (e) { 
@@ -477,7 +456,6 @@
             }
         }
 
-        // --- PDF Generation Logic (Fixed for A4 Margins) ---
         function downloadCurrentPDF() {
             const element = document.getElementById('print-content');
             const isLandscape = document.getElementById('print-content').classList.contains('landscape-content');
@@ -508,19 +486,14 @@
         }
 
         function openReportModal() {
-            // 🟢 過濾已關帳的計畫 (僅會計/管理員可見全部)
             const role = (state.currentUser?.role || '').toLowerCase();
             const isAdminOrAccountant = ['admin', 'accountant'].includes(role);
-
             const availableProjects = state.projects.filter(p => {
                 if (isAdminOrAccountant) return true;
-                // 一般使用者只能看到未關帳的計畫
                 return !isProjectClosed(p);
             });
-
             const sel = document.getElementById('rpt-project');
             sel.innerHTML = '<option value="ALL">全部計畫 (All Projects)</option>' + availableProjects.map(p=>`<option value="${p.id}">${p.name}${isProjectClosed(p) ? ' (已關帳)' : ''}</option>`).join('');
-            
             document.getElementById('rpt-month').value = new Date().toISOString().slice(0, 7);
             document.getElementById('rpt-full-year').checked = false;
             toggleReportDate();
@@ -528,21 +501,16 @@
         }
 
         function isProjectClosed(project) {
-            // 判斷計畫是否關帳，兼容 string 'TRUE' 或 boolean
             return String(project.status) === 'CLOSED' || String(project.isClosed).toUpperCase() === 'TRUE';
         }
 
         async function toggleProjectStatus(id, newStatus) {
             if(!confirm(`確定要將此計畫標記為${newStatus === 'CLOSED' ? '【關帳】' : '【開啟】'}嗎？`)) return;
             if(!state.currentUser) return showToast('請先登入', 'error');
-            
-            // 樂觀更新
             const p = state.projects.find(x => String(x.id) === String(id));
             const oldStatus = p ? p.status : '';
             if(p) { p.status = newStatus; updateUI(); }
-
             try {
-                // 假設後端支援 updateProjectStatus 動作
                 await apiCall({ 
                     action: 'updateProjectStatus', 
                     id: id, 
@@ -646,7 +614,6 @@
             const contentDiv = document.getElementById('print-content');
             contentDiv.className = 'bg-white p-4 pdf-content mx-auto'; 
             contentDiv.style.width = '200mm'; 
-
             let bankAcc = String(transaction.bankAccount || '');
             if (bankAcc.length > 0 && bankAcc.length < 14) bankAcc = bankAcc.padStart(14, '0');
 
@@ -671,21 +638,15 @@
             document.getElementById('print-modal').classList.remove('hidden');
         }
 
-        // --- Data Operations ---
-        
         document.getElementById('entry-form').onsubmit = async (e) => { 
             e.preventDefault(); 
-            // 由於網址已固定，state.apiUrl 一定有值
-            
             const isEdit=document.getElementById('inp-id').value!==""; 
             const btn=document.getElementById('btn-submit'); 
             btn.disabled=true; 
-            
             let rawBankAcc = document.getElementById('inp-bank-account').value.trim();
             if(rawBankAcc && rawBankAcc.length > 0 && rawBankAcc.length < 14 && /^\d+$/.test(rawBankAcc)) {
                 rawBankAcc = rawBankAcc.padStart(14, '0');
             }
-
             const formData={ 
                 action: isEdit?'edit':'add', 
                 id: isEdit?document.getElementById('inp-id').value:Date.now().toString(), 
@@ -701,7 +662,6 @@
                 createdBy:state.currentUser.id,
                 role: state.currentUser.role 
             }; 
-            
             try { 
                 showLoading(true);
                 await apiCall(formData);
@@ -728,7 +688,6 @@
                 } 
             } catch(err){ 
                 showToast('儲存失敗：' + err.message, 'error'); 
-                console.error(err);
             } finally { 
                 btn.disabled=false; 
                 showLoading(false);
@@ -795,18 +754,15 @@
             const pList=document.getElementById('projects-list-content'); 
             pList.innerHTML=''; 
             
-            // 🟢 2. 更新計畫列表 (含關帳功能)
             state.projects.forEach(p=>{ 
                 const closed = isProjectClosed(p);
                 const used=state.transactions.filter(t=>String(t.projectId)===String(p.id)&&t.type==='expense').reduce((a,c)=>a+(+c.amount||0),0); 
                 const pct=Math.min(Math.round(used/(p.budget||1)*100)||0,100); 
                 
-                // 儀表板：只顯示未關帳的，或會計可看全部
                 if (!closed || isAccountant) {
                     pStats.innerHTML+=`<div class="mb-3"><div class="flex justify-between text-sm mb-1"><span>${p.name}${closed?' (已關帳)':''}</span><span class="text-slate-500">$${used.toLocaleString()} / ${(p.budget||0).toLocaleString()}</span></div><div class="bg-slate-100 rounded-full h-2"><div class="h-2 rounded-full ${closed ? 'bg-slate-400' : (pct>90?'bg-rose-500':pct>70?'bg-amber-400':'bg-teal-500')}" style="width:${pct}%"></div></div></div>`; 
                 }
 
-                // 計畫頁面列表
                 let actionBtn = '';
                 if (isAccountant) {
                     if (closed) {
@@ -834,20 +790,15 @@
                     </div>`; 
             }); 
             
-            // 🟢 3. 過濾可選計畫 (Entry Form) - 一般使用者不能選已關帳
             const pSelect=document.getElementById('inp-project'); 
             const savedP=pSelect.value; 
-            
             const activeProjects = state.projects.filter(p => isAccountant || !isProjectClosed(p));
             pSelect.innerHTML=activeProjects.map(p=>`<option value="${p.id}">${p.name}${isProjectClosed(p) ? ' (已關帳)' : ''}</option>`).join(''); 
-            
             if(savedP) pSelect.value=savedP; 
             updateCategories(); 
             
-            // 🟢 4. 過濾交易明細 (List View)
             const sortedTransactions = state.transactions
                 .filter(t => {
-                    // 如果不是會計，且所屬計畫已關帳 -> 不顯示
                     if (isAccountant) return true;
                     const proj = state.projects.find(p => String(p.id) === String(t.projectId));
                     return proj && !isProjectClosed(proj);
@@ -861,7 +812,7 @@
             
             const totalPages = Math.ceil(sortedTransactions.length / state.itemsPerPage);
             if (state.currentPage > totalPages && totalPages > 0) state.currentPage = totalPages;
-            if (state.currentPage === 0 && totalPages > 0) state.currentPage = 1; // Fix potential bug
+            if (state.currentPage === 0 && totalPages > 0) state.currentPage = 1; 
             
             const startIndex = (state.currentPage - 1) * state.itemsPerPage;
             const endIndex = startIndex + state.itemsPerPage;
@@ -876,19 +827,10 @@
                     const projName=proj?.name||'(未知)'; 
                     const safeDate=(t.date||'').split('T')[0]; 
                     const isClosed = proj && isProjectClosed(proj);
-
                     const isApproved = String(t.accountantApproved).toUpperCase() === 'TRUE';
                     const isPaid = String(t.isPaid).toUpperCase() === 'TRUE';
-                    const isLocked = isApproved || isPaid || isClosed; // 關帳也視為鎖定
-                    
-                    // 只有在未鎖定或擁有特殊權限時才能修改
-                    // 關帳後，即便是 User 本人也不能改，除非是 Admin/Accountant (但通常關帳就是不能動)
-                    // 這邊設定：關帳後，連 Admin 也要先重啟計畫才能改明細，或者允許 Admin 直接改
-                    // 為了安全，關帳視為最高級鎖定。
-                    
+                    const isLocked = isApproved || isPaid || isClosed; 
                     const canModify = (isAdmin) || (!isLocked && (isAccountant || String(t.createdBy) === String(user.id)));
-                    // 若已關帳，非 Admin/Accountant 絕對不能改。Admin 若要改通常也建議先開啟，但這裡給 Admin 方便。
-                    // 修正：若已關帳，顯示鎖頭。
 
                     let treasurerInfo = '';
                     if ((isTreasurer || isAdmin) && t.type === 'expense') {
@@ -899,18 +841,16 @@
 
                     let actionBtns = '';
                     let statusBadge = '';
-
                     if (t.type === 'expense') {
                         if (isPaid) statusBadge = `<span class="bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-full font-bold">匯款完成</span>`;
                         else if (isApproved) statusBadge = `<span class="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-bold">待匯款</span>`;
                         else statusBadge = `<span class="bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-full font-bold">待核准</span>`;
                     }
-                    
                     if (isClosed) statusBadge += `<span class="ml-1 bg-slate-200 text-slate-600 text-xs px-2 py-1 rounded-full font-bold">關帳</span>`;
 
                     if (t.type === 'expense') actionBtns += `<button onclick="openVoucher('${t.id}')" class="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded" title="列印單據"><i data-lucide="printer" class="w-4 h-4"></i></button>`;
 
-                    if (canModify && !isClosed) { // 關帳後不能修改
+                    if (canModify && !isClosed) { 
                         actionBtns += `<button onclick="startEdit('${t.id}')" class="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded" title="修改"><i data-lucide="edit-3" class="w-4 h-4"></i></button><button onclick="deleteItem('${t.id}')" class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded" title="刪除"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`;
                     } else if (isLocked || isClosed) {
                         actionBtns += `<span class="p-1.5 text-slate-300" title="已鎖定/關帳"><i data-lucide="lock" class="w-4 h-4"></i></span>`;
@@ -938,13 +878,7 @@
 
         // 🔴 請在這裡貼上您的 Firebase 設定 (從 Firebase 控制台 -> 專案設定 -> 一般 -> 您的應用程式 下方複製)
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-          apiKey: "AIzaSyAS-zev6s404Osu7v2H93Z2IpXAUqkKn6A",
-          authDomain: "docs-89031.firebaseapp.com",
-          projectId: "docs-89031",
-          storageBucket: "docs-89031.firebasestorage.app",
-          messagingSenderId: "321571628998",
-          appId: "1:321571628998:web:e4be3b3fba9aafa1a234c7",
-          measurementId: "G-YSNN9LDVNF"
+            // 在這裡填入您的設定，如果上面變數無效
         };
 
         let app, auth;
@@ -962,7 +896,19 @@
             if (!auth) return alert("Firebase 未正確設定");
             try {
                 showLoading(true);
-                await signInWithPopup(auth, provider);
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+                
+                // 🟢 網域檢查 (Domain Check)
+                if (!user.email.endsWith('@onanip.org')) {
+                    await signOut(auth);
+                    showLoading(false);
+                    document.getElementById('login-msg').innerText = "登入失敗：本系統僅限 @onanip.org 帳號使用";
+                    document.getElementById('login-msg').classList.remove('hidden');
+                    return;
+                }
+                
+                // 通過檢查，onAuthStateChanged 會接手處理後續
             } catch (error) {
                 showLoading(false);
                 console.error(error);
@@ -984,19 +930,24 @@
         };
 
         if (auth) {
-            onAuthStateChanged(auth, (user) => {
+            onAuthStateChanged(auth, async (user) => {
                 window.firebaseUser = user;
                 if (user) {
+                    // 🟢 雙重檢查：防止已登入的非組織帳號進入
+                    if (!user.email.endsWith('@onanip.org')) {
+                        await signOut(auth);
+                        document.getElementById('login-msg').innerText = "本系統僅限 @onanip.org 帳號使用";
+                        document.getElementById('login-msg').classList.remove('hidden');
+                        document.getElementById('login-overlay').classList.remove('hidden');
+                        showLoading(false);
+                        return;
+                    }
+
                     document.getElementById('login-overlay').classList.add('hidden');
-                    // 網址固定，不再讀取 localStorage
-                    // 直接 fetchData
                     fetchData(); 
                 } else {
                     state.currentUser = null;
-                    // localStorage.removeItem('onanip_url'); // 網址已固定，無需清除
-                    
                     document.getElementById('login-msg').classList.add('hidden');
-                    
                     document.getElementById('login-overlay').classList.remove('hidden');
                     document.getElementById('navbar').classList.replace('bg-teal-700','bg-slate-700');
                     document.getElementById('user-display').innerText = '未登入';
