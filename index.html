@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V33 Google Login Fixed)</title>
+    <title>花蓮縣 'onanip 文教協會 - 會計系統 (V33 Google Login Fixed2)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- 引入 html2pdf 用於產生 PDF -->
@@ -247,7 +247,7 @@
         <button onclick="switchTab('projects')" class="nav-btn text-slate-400 flex flex-col items-center p-2 w-full"><i data-lucide="list" class="w-6 h-6"></i><span class="text-[10px]">計畫</span></button>
     </div>
 
-    <!-- Main Application Logic (Moved ABOVE Firebase Module to fix ReferenceError) -->
+    <!-- Main Application Logic (Placed BEFORE Firebase to ensure globals are ready) -->
     <script>
         let state = { 
             apiUrl: '', 
@@ -260,6 +260,9 @@
             itemsPerPage: 15
         };
         let toastTimeout;
+        
+        // Define variable to hold Firebase user state so main logic can access it
+        window.firebaseUser = null;
 
         window.onload = () => {
             lucide.createIcons();
@@ -693,11 +696,6 @@
 
             lucide.createIcons(); 
         }
-
-        // --- Firebase Module Script ---
-        // (Will be injected below in final file structure if separated, but here I keep logic in one standard script block for simplicity and robustness)
-        // However, to use "import", we need type="module". 
-        // We will keep the main logic here in standard script to define globals, and add the module script below.
     </script>
 
     <!-- Firebase Integration Module -->
@@ -706,15 +704,15 @@
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
         // 🔴 請在這裡貼上您的 Firebase 設定 (從 Firebase 控制台 -> 專案設定 -> 一般 -> 您的應用程式 下方複製)
-        const firebaseConfig = {
-  apiKey: "AIzaSyAS-zev6s404Osu7v2H93Z2IpXAUqkKn6A",
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+         apiKey: "AIzaSyAS-zev6s404Osu7v2H93Z2IpXAUqkKn6A",
   authDomain: "docs-89031.firebaseapp.com",
   projectId: "docs-89031",
   storageBucket: "docs-89031.firebasestorage.app",
   messagingSenderId: "321571628998",
   appId: "1:321571628998:web:e4be3b3fba9aafa1a234c7",
   measurementId: "G-YSNN9LDVNF"
-};
+        };
 
         let app, auth;
         try {
