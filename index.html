@@ -1,13 +1,16 @@
 <!doctype html>
 <html lang="zh-Hant">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
-<title>ʼonanip 文教協會｜會計系統 V40</title><link rel="stylesheet" href="./styles.css"></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#5A321B">
+<title>花蓮縣ʼonanip文教協會｜會計系統 V40</title><link rel="stylesheet" href="./styles.css?v=20261011-brand"></head>
 <body>
-<header><div class="brand"><span class="brand-mark">ʼ</span><div><strong>ʼonanip 文教協會</strong><small>會計與核銷工作台 · V40</small></div></div>
-<div class="user-actions"><span id="user-name">尚未登入</span><button id="refresh" hidden>重新整理</button><button id="logout" hidden>登出</button></div></header>
-<nav aria-label="主要功能"><button data-tab="dashboard" class="active">總覽</button><button data-tab="entry">記帳</button><button data-tab="list">收支明細</button><button data-tab="projects">計畫</button></nav>
-<main>
-<section id="login-panel" class="login card"><div class="eyebrow">ʼONANIP / FINANCE</div><h1>每一筆款項，清楚記錄。</h1><p>使用協會 Google 帳號登入，依您的職務處理記帳、核准與付款。</p><button id="login" class="primary" disabled>使用 Google 帳號登入</button><p id="login-message" class="hint" role="status">僅限已授權的 @onanip.org 帳號。</p></section>
+<a class="skip-link" href="#main-content">跳到主要內容</a>
+<div class="site-masthead">
+<header><div class="header-inner"><a class="brand" href="https://sites.onanip.org/" target="_blank" rel="noopener noreferrer" aria-label="花蓮縣ʼonanip文教協會首頁（另開視窗）"><span class="brand-word">ʼonanip<span class="brand-dot">.</span></span><span class="brand-name">花蓮縣ʼonanip文教協會</span></a>
+<div class="user-actions"><span class="system-label">會計與核銷工作台</span><span id="user-name">尚未登入</span><button id="refresh" hidden>重新整理</button><button id="logout" hidden>登出</button></div></div></header>
+<nav aria-label="主要功能"><div class="nav-inner"><button data-tab="dashboard" class="active">總覽</button><button data-tab="entry">記帳</button><button data-tab="list">收支明細</button><button data-tab="projects">計畫</button><a class="home-link" href="https://sites.onanip.org/" target="_blank" rel="noopener noreferrer">協會首頁 ↗<span class="sr-only">（另開視窗）</span></a></div></nav>
+</div>
+<main id="main-content" tabindex="-1">
+<section id="login-panel" class="login" aria-labelledby="login-title"><div class="login-photo"><img src="./assets/seedling.jpg" alt="檳榔幼苗在陽光下萌芽，象徵文化的延續與新生" width="545" height="841"><span class="photo-caption">ʼonanip ／ 檳榔幼苗</span></div><div class="login-copy"><div class="landscape" aria-hidden="true"><span class="sun"></span><span class="mountain"></span></div><div class="eyebrow">ʼONANIP / FINANCE</div><h1 id="login-title">每一筆款項，<br>清楚記錄。</h1><div class="hero-rule" aria-hidden="true"></div><p>使用協會 Google 帳號登入，<br>依您的職務處理記帳、核准與付款。</p><button id="login" class="primary" disabled>使用 Google 帳號登入 ↗</button><p id="login-message" class="hint" role="status">僅限已授權的 @onanip.org 帳號。</p></div></section>
 <div id="workspace" hidden>
 <section data-view="dashboard"><div class="section-heading"><div><div class="eyebrow">OVERVIEW</div><h1>帳務總覽</h1></div><label>登錄年度<select id="dashboard-year"></select></label></div>
 <p class="hint" id="dashboard-scope">依交易登錄日期統計；已付款支出與尚未付款申請分開顯示。登錄收入並非銀行存款餘額。</p><div id="stats" class="stats"></div>
@@ -26,6 +29,7 @@
 <section data-view="projects" hidden><div class="section-heading"><div><div class="eyebrow">PROJECTS</div><h1>計畫管理</h1></div></div><p class="hint">有未付款支出的計畫不能關帳。關帳後保留查詢，停止所有交易寫入。</p><div id="projects-list"></div></section>
 </div>
 </main>
+<footer class="site-footer"><div class="footer-inner"><div><strong>花蓮縣ʼonanip文教協會</strong><span>讓文化在你的心發芽</span></div><div><span>會計與核銷工作台 · V40</span><a href="https://sites.onanip.org/" target="_blank" rel="noopener noreferrer">協會首頁 ↗<span class="sr-only">（另開視窗）</span></a></div></div></footer>
 <dialog id="report-dialog"><form id="report-form"><div class="dialog-heading"><h2>財務報表</h2><button type="button" data-close="report-dialog" aria-label="關閉">×</button></div><div class="form-grid">
 <label class="wide">計畫<select name="project"></select></label><label>年度<select name="year" required></select></label><label>月份<select name="month"><option value="">全年度</option></select></label>
 <label class="wide">報表類型<select name="reportType"><option value="journal">日記帳</option><option value="ledger">分類帳</option><option value="monthly">收支彙總表</option></select></label>
