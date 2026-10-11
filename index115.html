@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>ʼonanip 文教協會｜會計系統 V40</title><link rel="stylesheet" href="./styles.css"></head>
+<body>
+<header><div class="brand"><span class="brand-mark">ʼ</span><div><strong>ʼonanip 文教協會</strong><small>會計與核銷工作台 · V40</small></div></div>
+<div class="user-actions"><span id="user-name">尚未登入</span><button id="refresh" hidden>重新整理</button><button id="logout" hidden>登出</button></div></header>
+<nav aria-label="主要功能"><button data-tab="dashboard" class="active">總覽</button><button data-tab="entry">記帳</button><button data-tab="list">收支明細</button><button data-tab="projects">計畫</button></nav>
+<main>
+<section id="login-panel" class="login card"><div class="eyebrow">ʼONANIP / FINANCE</div><h1>每一筆款項，清楚記錄。</h1><p>使用協會 Google 帳號登入，依您的職務處理記帳、核准與付款。</p><button id="login" class="primary" disabled>使用 Google 帳號登入</button><p id="login-message" class="hint" role="status">僅限已授權的 @onanip.org 帳號。</p></section>
+<div id="workspace" hidden>
+<section data-view="dashboard"><div class="section-heading"><div><div class="eyebrow">OVERVIEW</div><h1>帳務總覽</h1></div><label>登錄年度<select id="dashboard-year"></select></label></div>
+<p class="hint" id="dashboard-scope">依交易登錄日期統計；已付款支出與尚未付款申請分開顯示。登錄收入並非銀行存款餘額。</p><div id="stats" class="stats"></div>
+<div class="card"><div class="section-heading"><h2>計畫預算</h2><span class="hint">累計登錄支出，包含待核准案件</span></div><div id="project-stats"></div></div></section>
+<section data-view="entry" hidden><div class="section-heading"><div><div class="eyebrow">RECORD</div><h1 id="entry-title">新增紀錄</h1></div></div>
+<form id="entry-form" class="card form-card"><input name="id" type="hidden"><input name="version" type="hidden">
+<div class="form-grid"><label>收支類別<select name="type"><option value="expense">支出</option><option value="income">收入</option></select></label>
+<label>交易日期<input name="date" type="date" required></label><label>金額（元）<input name="amount" type="number" min="1" max="999999999" step="1" required inputmode="numeric"></label>
+<label>計畫<select name="projectId" required></select></label><label>科目<select name="category" required></select></label><label>對象／受款人<input name="payee" maxlength="100"></label>
+<label class="wide">摘要<input name="summary" maxlength="500" required></label><label>銀行代碼<input name="bankCode" inputmode="numeric" pattern="[0-9]{3}" maxlength="3" placeholder="三碼"></label>
+<label>銀行帳號<input name="bankAccount" inputmode="numeric" pattern="[0-9]{1,30}" maxlength="30" placeholder="保留原始位數，不自動補零"></label><label class="wide">備註<textarea name="note" rows="3" maxlength="1000"></textarea></label></div>
+<div class="form-actions"><button type="button" id="cancel-edit">清除／取消修改</button><button type="submit" class="primary" id="save">儲存紀錄</button></div><p class="hint">儲存支出後可開啟憑證；付款請至明細登記。已核准資料須先撤回核准，才可補正。</p></form></section>
+<section data-view="list" hidden><div class="section-heading"><div><div class="eyebrow">TRANSACTIONS</div><h1>收支明細</h1></div><button class="primary" id="report-open">產出報表</button></div>
+<div class="card filters"><label>搜尋<input id="filter-q" type="search" placeholder="摘要、對象、科目或編號"></label><label>計畫<select id="filter-project"></select></label><label>年度<select id="filter-year"></select></label><label>狀態<select id="filter-status"><option value="">全部有效紀錄</option><option value="pending">待核准</option><option value="approved">核准待付款</option><option value="paid">已付款</option><option value="income">收入</option><option value="void">已作廢</option></select></label></div>
+<div class="card table-wrap"><table><thead><tr><th>日期／內容</th><th>金額／狀態</th><th>操作</th></tr></thead><tbody id="list-body"></tbody></table><div class="pagination"><button id="prev-page">上一頁</button><span id="page-info"></span><button id="next-page">下一頁</button></div></div></section>
+<section data-view="projects" hidden><div class="section-heading"><div><div class="eyebrow">PROJECTS</div><h1>計畫管理</h1></div></div><p class="hint">有未付款支出的計畫不能關帳。關帳後保留查詢，停止所有交易寫入。</p><div id="projects-list"></div></section>
+</div>
+</main>
+<dialog id="report-dialog"><form id="report-form"><div class="dialog-heading"><h2>財務報表</h2><button type="button" data-close="report-dialog" aria-label="關閉">×</button></div><div class="form-grid">
+<label class="wide">計畫<select name="project"></select></label><label>年度<select name="year" required></select></label><label>月份<select name="month"><option value="">全年度</option></select></label>
+<label class="wide">報表類型<select name="reportType"><option value="journal">日記帳</option><option value="ledger">分類帳</option><option value="monthly">收支彙總表</option></select></label>
+<label class="wide">統計口徑<select name="basis"><option value="registered">登錄收支（包含待核准與未付款）</option><option value="paid">收入登錄與已付款支出</option></select></label></div><p class="hint">已付款支出依付款日期篩選；舊資料缺少付款日期者另列提示。作廢紀錄不計入報表。</p><div class="form-actions"><button class="primary" type="submit">預覽報表</button></div></form></dialog>
+<dialog id="payment-dialog"><form id="payment-form"><div class="dialog-heading"><h2>登記已付款</h2><button type="button" data-close="payment-dialog" aria-label="關閉">×</button></div><input name="id" type="hidden"><input name="version" type="hidden"><div class="form-grid"><label>付款日期<input name="paymentDate" type="date" required></label><label>付款方式<select name="paymentMethod"><option value="transfer">銀行匯款</option><option value="cash">現金</option><option value="other">其他</option></select></label><label class="wide">付款紀錄／交易末碼<input name="paymentReference" maxlength="200" required></label></div><p class="hint">此功能記錄已完成的付款，不會執行銀行轉帳。</p><div class="form-actions"><button type="submit" class="primary">確認登記</button></div></form></dialog>
+<dialog id="reason-dialog"><form id="reason-form"><div class="dialog-heading"><h2 id="reason-title">填寫原因</h2><button type="button" data-close="reason-dialog" aria-label="關閉">×</button></div><label>原因<textarea name="reason" maxlength="500" rows="4" required></textarea></label><div class="form-actions"><button type="submit" class="primary">確認</button></div></form></dialog>
+<dialog id="preview-dialog" class="preview-dialog"><div class="dialog-heading"><h2>文件預覽</h2><div><button id="print-document">列印／另存 PDF</button><button id="download-pdf">下載 PDF</button><button type="button" data-close="preview-dialog" aria-label="關閉">×</button></div></div><div class="paper-scroll"><div id="print-content" class="paper"></div></div></dialog>
+<div id="busy" class="busy" hidden role="status">處理中，請稍候…</div><div id="message" role="status" aria-live="polite" hidden></div>
+<script type="module" src="./app.js"></script>
+</body></html>
